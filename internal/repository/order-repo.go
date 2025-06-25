@@ -32,7 +32,7 @@ func (r *orderRepo) SaveOrder(ctx context.Context, order *model.Order) (uuid.UUI
 
 	var orderID uuid.UUID
 	err := r.db.QueryRow(ctx, query,
-		order.OrderUid, order.TrackNumber, order.Entry, order.Locale, order.InternalSignature,
+		order.OrderID, order.TrackNumber, order.Entry, order.Locale, order.InternalSignature,
 		order.CustomerId, order.DeliveryService, order.Shardkey, order.SmId, order.DateCreated, order.OofShard).Scan(&orderID)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("error creatin order: %w", err)
@@ -51,7 +51,7 @@ func (r *orderRepo) GetOrderById(ctx context.Context, orderID uuid.UUID) (*model
 
 	var order model.Order
 	err := r.db.QueryRow(ctx, query, orderID).Scan(
-		&order.OrderUid, &order.TrackNumber, &order.Entry, &order.Locale,
+		&order.OrderID, &order.TrackNumber, &order.Entry, &order.Locale,
 		&order.InternalSignature, &order.CustomerId, &order.DeliveryService,
 		&order.Shardkey, &order.SmId, &order.DateCreated, &order.OofShard,
 	)
