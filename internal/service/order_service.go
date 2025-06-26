@@ -5,24 +5,22 @@ import (
 	"errors"
 	"fmt"
 	"github.com/aliskhannn/order-service/internal/model"
-	"github.com/aliskhannn/order-service/internal/repository"
 	"github.com/google/uuid"
 )
 
-type OrderService interface {
-	CreateOrder(ctx context.Context, order *model.Order) (uuid.UUID, error)
-	GetOrderByID(ctx context.Context, orderUID uuid.UUID) (*model.Order, error)
+type orderRepository interface {
+	SaveOrder(ctx context.Context, order *model.Order) (uuid.UUID, error)
+	GetOrderById(ctx context.Context, orderID uuid.UUID) (*model.Order, error)
+}
+type OrderService struct {
+	repo orderRepository
 }
 
-type orderService struct {
-	repo repository.OrderRepository
+func NewOrderService(repo orderRepository) *OrderService {
+	return &OrderService{repo: repo}
 }
 
-func NewOrderService(repo repository.OrderRepository) OrderService {
-	return &orderService{repo: repo}
-}
-
-func (s *orderService) CreateOrder(ctx context.Context, order *model.Order) (uuid.UUID, error) {
+func (s *OrderService) CreateOrder(ctx context.Context, order *model.Order) (uuid.UUID, error) {
 	if order == nil {
 		return uuid.Nil, errors.New("order is required")
 	}
@@ -35,7 +33,7 @@ func (s *orderService) CreateOrder(ctx context.Context, order *model.Order) (uui
 	return orderID, nil
 }
 
-func (s *orderService) GetOrderByID(ctx context.Context, orderID uuid.UUID) (*model.Order, error) {
+func (s *OrderService) GetOrderByID(ctx context.Context, orderID uuid.UUID) (*model.Order, error) {
 	if orderID == uuid.Nil {
 		return nil, errors.New("order id is required")
 	}

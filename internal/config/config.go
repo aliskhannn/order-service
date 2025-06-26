@@ -1,0 +1,71 @@
+package config
+
+import (
+	"fmt"
+	"github.com/joho/godotenv"
+	"github.com/spf13/viper"
+	"log"
+	"os"
+)
+
+type Config struct {
+	Server   Server   `yaml:"server"`
+	Database Database `yaml:"database"`
+	Kafka    Kafka    `yaml:"kafka"`
+}
+
+type Server struct {
+	HTTPPort string `yaml:"httpPort"`
+}
+
+type Database struct {
+	Host     string
+	Port     string
+	User     string
+	Password string
+	Name     string
+	SSLMode  string `yaml:"sslmode"`
+}
+
+type Kafka struct {
+	Topic string `yaml:"topic"`
+	Addr  string `yaml:"addr"`
+}
+
+func (c *Config) DatabaseURL() string {
+	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
+		c.Database.User,
+		c.Database.Password,
+		c.Database.Host,
+		c.Database.Port,
+		c.Database.Name,
+		c.Database.SSLMode,
+	)
+}
+
+func MustLoad() *Config {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatalf("error reading env file: %v", err)
+	}
+
+	viper.SetConfigName("config")
+	viper.SetConfigType("yaml")
+	viper.AddConfigPath("./config")
+	if err := viper.ReadInConfig(); err != nil {
+		log.Panicf("fatal error config file: %v", err)
+	}
+
+	var cfg Config
+	if err := viper.Unmarshal(&cfg); err != nil {
+		log.Fatalf("unable to decode into struct, %v", err)
+	}
+
+	cfg.Database.Host = os.Getenv("DB_HOST")
+	cfg.Database.Port = os.Getenv("DB_PORT")
+	cfg.Database.User = os.Getenv("DB_USER")
+	cfg.Database.Password = os.Getenv("DB_PASSWORD")
+	cfg.Database.Name = os.Getenv("DB_NAME")
+
+	return &cfg
+}

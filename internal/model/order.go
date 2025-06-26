@@ -6,10 +6,10 @@ import (
 )
 
 type Order struct {
-	OrderUid          uuid.UUID `json:"order_uid"`
+	OrderID           uuid.UUID `json:"order_uid"`
 	TrackNumber       string    `json:"track_number"`
 	Entry             string    `json:"entry"`
-	Delivery          Delivery  `json:"delivery"`
+	Delivery          Delivery  `json:"api"`
 	Payment           Payment   `json:"payment"`
 	Items             []Item    `json:"items"`
 	Locale            string    `json:"locale"`

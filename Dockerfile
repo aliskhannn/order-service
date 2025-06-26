@@ -8,8 +8,7 @@ RUN go mod download
 
 COPY . .
 
-RUN go build -o main ./cmd/app/main.go
+RUN go build -o kafka ./cmd/kafka/main.go
+RUN go build -o server ./cmd/server/main.go
 
 EXPOSE 8080
-
-CMD ["./main"]

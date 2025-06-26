@@ -8,20 +8,15 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type OrderRepository interface {
-	SaveOrder(ctx context.Context, order *model.Order) (uuid.UUID, error)
-	GetOrderById(ctx context.Context, orderID uuid.UUID) (*model.Order, error)
-}
-
-type orderRepo struct {
+type OrderRepository struct {
 	db *pgxpool.Pool
 }
 
-func NewOrderRepo(db *pgxpool.Pool) OrderRepository {
-	return &orderRepo{db: db}
+func NewOrderRepo(db *pgxpool.Pool) *OrderRepository {
+	return &OrderRepository{db: db}
 }
 
-func (r *orderRepo) SaveOrder(ctx context.Context, order *model.Order) (uuid.UUID, error) {
+func (r *OrderRepository) SaveOrder(ctx context.Context, order *model.Order) (uuid.UUID, error) {
 	query := `
 	INSERT INTO orders (
 		order_uid, track_number, entry, locale, internal_signature, customer_id,
@@ -35,13 +30,13 @@ func (r *orderRepo) SaveOrder(ctx context.Context, order *model.Order) (uuid.UUI
 		order.OrderID, order.TrackNumber, order.Entry, order.Locale, order.InternalSignature,
 		order.CustomerId, order.DeliveryService, order.Shardkey, order.SmId, order.DateCreated, order.OofShard).Scan(&orderID)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("error creatin order: %w", err)
+		return uuid.Nil, fmt.Errorf("error creating order: %w", err)
 	}
 
 	return orderID, nil
 }
 
-func (r *orderRepo) GetOrderById(ctx context.Context, orderID uuid.UUID) (*model.Order, error) {
+func (r *OrderRepository) GetOrderById(ctx context.Context, orderID uuid.UUID) (*model.Order, error) {
 	query := `
 	SELECT order_uid, track_number, entry, locale, internal_signature, customer_id,
 		delivery_service, shardkey, sm_id, date_created, oof_shard

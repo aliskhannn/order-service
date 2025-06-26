@@ -1,14 +1,19 @@
 run:
-	go run ./cmd/app/main.go
+	go run ./cmd/server/main.go
 
 build:
-	go build -o bin/app ./cmd/app/main.go
+	go build -o bin/app ./cmd/server/main.go
 
 test:
 	go test -v ./...
 
 docker-up:
-	docker compose up
+	docker compose up --build
 
 docker-down:
-	docker compose down
+	docker compose down -v
+
+.PHONY: producer
+
+producer:
+	docker compose exec kafka kafka-console-producer.sh --bootstrap-server kafka:9092 --topic ${TOPIC}
