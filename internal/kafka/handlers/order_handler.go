@@ -5,11 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/aliskhannn/order-service/internal/model"
-	"github.com/google/uuid"
 )
 
 type orderService interface {
-	CreateOrder(ctx context.Context, order *model.Order) (uuid.UUID, error)
+	CreateOrder(ctx context.Context, order *model.Order) (string, error)
 }
 
 type OrderCreatedTopicHandler struct {

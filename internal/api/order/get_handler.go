@@ -1,16 +1,15 @@
-package api
+package order
 
 import (
 	"context"
 	"encoding/json"
 	"github.com/aliskhannn/order-service/internal/model"
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
 	"net/http"
 )
 
 type orderService interface {
-	GetOrderByID(ctx context.Context, orderUID uuid.UUID) (*model.Order, error)
+	GetOrderByID(ctx context.Context, orderID string) (*model.Order, error)
 }
 
 type OrderHTTPHandler struct {
@@ -24,12 +23,7 @@ func NewOrderHTTPHandler(s orderService) *OrderHTTPHandler {
 }
 
 func (h *OrderHTTPHandler) GetOrderByID(w http.ResponseWriter, r *http.Request) {
-	orderIDStr := chi.URLParam(r, "id")
-	orderID, err := uuid.Parse(orderIDStr)
-	if err != nil {
-		http.Error(w, "invalid order ID", http.StatusBadRequest)
-		return
-	}
+	orderID := chi.URLParam(r, "id")
 
 	order, err := h.orderService.GetOrderByID(r.Context(), orderID)
 	if err != nil {

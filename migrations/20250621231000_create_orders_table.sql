@@ -1,20 +1,19 @@
 -- +goose Up
 -- +goose StatementBegin
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
-
 CREATE TABLE IF NOT EXISTS orders (
-    order_uid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    track_number TEXT NOT NULL,
-    entry TEXT NOT NULL,
-    locale VARCHAR(10) NOT NULL,
+    order_uid TEXT PRIMARY KEY,
+    track_number VARCHAR(32) NOT NULL,
+    entry VARCHAR(10),
+    locale VARCHAR(5),
     internal_signature TEXT,
-    customer_id TEXT NOT NULL,
-    delivery_service TEXT NOT NULL,
-    shardkey TEXT NOT NULL,
-    sm_id INT NOT NULL,
-    date_created TIMESTAMP WITH TIME ZONE NOT NULL,
-    oof_shard TEXT NOT NULL
-)
+    customer_id VARCHAR(50),
+    delivery_service VARCHAR(50),
+    shardkey VARCHAR(5),
+    sm_id INT,
+    date_created TIMESTAMPTZ NOT NULL,
+    oof_shard VARCHAR(5)
+);
+
 -- +goose StatementEnd
 -- {"order_id": 1, "status": "created"}
 -- +goose Down

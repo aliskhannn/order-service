@@ -1,15 +1,14 @@
 package model
 
 import (
-	"github.com/google/uuid"
 	"time"
 )
 
 type Order struct {
-	OrderID           uuid.UUID `json:"order_uid"`
+	OrderID           string    `json:"order_uid"`
 	TrackNumber       string    `json:"track_number"`
 	Entry             string    `json:"entry"`
-	Delivery          Delivery  `json:"api"`
+	Delivery          Delivery  `json:"delivery"`
 	Payment           Payment   `json:"payment"`
 	Items             []Item    `json:"items"`
 	Locale            string    `json:"locale"`

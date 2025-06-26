@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"errors"
-	"github.com/aliskhannn/order-service/internal/api"
+	"github.com/aliskhannn/order-service/internal/api/order"
 	"github.com/aliskhannn/order-service/internal/config"
 	"github.com/aliskhannn/order-service/internal/repository"
 	"github.com/aliskhannn/order-service/internal/service"
@@ -29,10 +29,10 @@ func main() {
 
 	repo := repository.NewOrderRepo(dbpool)
 	orderService := service.NewOrderService(repo)
-	orderHTTPHandler := api.NewOrderHTTPHandler(orderService)
+	orderHTTPHandler := order.NewOrderHTTPHandler(orderService)
 
 	r := chi.NewRouter()
-	r.Get("/order/{id}", orderHTTPHandler.GetOrderByID)
+	r.Get("/orders/{id}", orderHTTPHandler.GetOrderByID)
 
 	server := &http.Server{
 		Addr:    cfg.Server.HTTPPort,

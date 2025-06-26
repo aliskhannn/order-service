@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS payment (
     transaction TEXT PRIMARY KEY,
     order_uid TEXT NOT NULL REFERENCES orders(order_uid) ON DELETE CASCADE,
     request_id TEXT,
-    currency VARCHAR(10) NOT NULL,
+    currency VARCHAR(5) NOT NULL,
     provider VARCHAR(50) NOT NULL,
     amount INT NOT NULL,
     payment_dt BIGINT NOT NULL,
@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS payment (
     delivery_cost INT NOT NULL,
     goods_total INT NOT NULL,
     custom_fee INT NOT NULL
-)
+);
 -- +goose StatementEnd
 
 -- +goose Down

@@ -43,6 +43,7 @@ services:
       - GOOSE_DRIVER=${GOOSE_DRIVER}
       - GOOSE_DBSTRING=host=${DB_HOST} port=${DB_PORT} user=${DB_USER} password=${DB_PASSWORD} dbname=${DB_NAME}
       - GOOSE_MIGRATION_DIR=${GOOSE_MIGRATION_DIR}
+      # - GOOSE_COMMAND=down # the goose command to execute, up by default.
     volumes:
       - ./migrations:/migrations
     networks:
