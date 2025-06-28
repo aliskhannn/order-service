@@ -3,15 +3,18 @@ package main
 import (
 	"context"
 	"github.com/aliskhannn/order-service/internal/config"
+	cache2 "github.com/aliskhannn/order-service/internal/infra/cache"
 	"github.com/aliskhannn/order-service/internal/infra/kafka"
-	"github.com/aliskhannn/order-service/internal/kafka/handlers"
+	kafkahandlers "github.com/aliskhannn/order-service/internal/kafka/handlers"
 	"github.com/aliskhannn/order-service/internal/repository"
 	"github.com/aliskhannn/order-service/internal/service"
+	"github.com/aliskhannn/order-service/internal/validator"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"log"
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 )
 
 func main() {
@@ -28,11 +31,13 @@ func main() {
 	}
 
 	repo := repository.NewOrderRepo(dbpool)
-	orderService := service.NewOrderService(repo)
+	cache := cache2.NewGoCache(5*time.Minute, 10*time.Minute)
+	orderService := service.NewOrderService(repo, cache)
+	val := validator.New()
 
-	orderCreatedTopicHandler := handlers.NewOrderCreatedTopicHandler(orderService)
+	orderCreatedHandler := kafkahandlers.NewOrderCreatedHandler(orderService, val)
 
-	consumer := kafka.NewConsumer(cfg.Kafka.Topic, cfg.Kafka.Addr, orderCreatedTopicHandler)
+	consumer := kafka.NewConsumer(cfg.Kafka.GroupID, cfg.Kafka.Topic, cfg.Kafka.Addr, orderCreatedHandler)
 	wg.Add(1)
 	go consumer.ConsumeMessage(ctx, &wg)
 

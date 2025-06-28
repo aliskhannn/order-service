@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS orders (
 );
 
 -- +goose StatementEnd
--- {"order_id": 1, "status": "created"}
+
 -- +goose Down
 -- +goose StatementBegin
 DROP TABLE IF EXISTS orders;

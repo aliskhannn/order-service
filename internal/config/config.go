@@ -28,8 +28,9 @@ type Database struct {
 }
 
 type Kafka struct {
-	Topic string `yaml:"topic"`
-	Addr  string `yaml:"addr"`
+	GroupID string `yaml:"groupID"`
+	Topic   string `yaml:"topic"`
+	Addr    string `yaml:"addr"`
 }
 
 func (c *Config) DatabaseURL() string {

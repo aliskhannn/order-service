@@ -70,7 +70,7 @@ func (r *OrderRepository) SaveOrder(ctx context.Context, order *model.Order) (st
 	`
 	_, err = tx.Exec(ctx, paymentQuery,
 		p.Transaction, order.OrderID, p.RequestID, p.Currency, p.Provider,
-		p.Amount, p.PaymentDt, p.Bank, p.DeliveryCost, p.GoodsTotal, p.CustomFee)
+		p.Amount, p.PaymentDT, p.Bank, p.DeliveryCost, p.GoodsTotal, p.CustomFee)
 	if err != nil {
 		return "", fmt.Errorf("error inserting into deliveryt: %w", err)
 	}
@@ -148,7 +148,7 @@ func (r *OrderRepository) GetOrderById(ctx context.Context, orderID string) (*mo
 	var payment model.Payment
 	err = r.db.QueryRow(ctx, paymentQuery, orderID).Scan(
 		&payment.Transaction, &payment.RequestID, &payment.Currency, &payment.Provider,
-		&payment.Amount, &payment.PaymentDt, &payment.Bank, &payment.DeliveryCost,
+		&payment.Amount, &payment.PaymentDT, &payment.Bank, &payment.DeliveryCost,
 		&payment.GoodsTotal, &payment.CustomFee,
 	)
 	if err != nil {

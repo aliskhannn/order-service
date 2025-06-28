@@ -17,9 +17,9 @@ type Consumer struct {
 	handler messageHandler
 }
 
-func NewConsumer(topic string, addr string, handler messageHandler) *Consumer {
+func NewConsumer(groupID string, topic string, addr string, handler messageHandler) *Consumer {
 	return &Consumer{
-		reader:  NewReader(topic, addr),
+		reader:  NewReader(groupID, topic, addr),
 		handler: handler,
 	}
 }
@@ -28,7 +28,7 @@ func (c *Consumer) ConsumeMessage(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	for {
-		m, err := c.reader.ReadMessage(ctx)
+		m, err := c.reader.FetchMessage(ctx)
 		if err != nil {
 			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 				log.Println("consumer stopped")
@@ -39,7 +39,12 @@ func (c *Consumer) ConsumeMessage(ctx context.Context, wg *sync.WaitGroup) {
 		}
 
 		if err = c.handler.HandleMessage(ctx, m.Value); err != nil {
-			log.Printf("error handling message: %v", err)
+			log.Printf("error handling message at offset %d: %v", m.Offset, err)
+
+			if err = c.reader.CommitMessages(ctx, m); err != nil {
+				log.Printf("failed to commit message: %v", err)
+			}
+
 			continue
 		}
 

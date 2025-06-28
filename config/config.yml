@@ -5,5 +5,6 @@ database:
   sslmode: "disable"
 
 kafka:
+  groupID: "order-consumer-group-id"
   topic: "order.created"
   addr: "kafka:9092"

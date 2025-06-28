@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/aliskhannn/order-service/internal/api/order"
 	"github.com/aliskhannn/order-service/internal/config"
+	cache2 "github.com/aliskhannn/order-service/internal/infra/cache"
 	"github.com/aliskhannn/order-service/internal/repository"
 	"github.com/aliskhannn/order-service/internal/service"
 	"github.com/go-chi/chi/v5"
@@ -28,8 +29,9 @@ func main() {
 	}
 
 	repo := repository.NewOrderRepo(dbpool)
-	orderService := service.NewOrderService(repo)
-	orderHTTPHandler := order.NewOrderHTTPHandler(orderService)
+	cache := cache2.NewGoCache(5*time.Minute, 10*time.Minute)
+	orderService := service.NewOrderService(repo, cache)
+	orderHTTPHandler := order.NewGetHandler(orderService)
 
 	r := chi.NewRouter()
 	r.Get("/orders/{id}", orderHTTPHandler.GetOrderByID)
