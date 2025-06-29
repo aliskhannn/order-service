@@ -7,6 +7,7 @@ import (
 	"log"
 )
 
+//go:generate mockgen -source=order_service.go -destination=../mocks/service/mock_order.go -package=mocks
 type orderRepository interface {
 	SaveOrder(ctx context.Context, order *model.Order) (string, error)
 	GetOrderById(ctx context.Context, orderID string) (*model.Order, error)

@@ -9,6 +9,7 @@ import (
 	"net/http"
 )
 
+//go:generate mockgen -source=get_handler.go -destination=../../mocks/api/order/mock_order_service.go -package=mocks
 type orderService interface {
 	GetOrderByID(ctx context.Context, orderID string) (*model.Order, error)
 }
@@ -36,7 +37,7 @@ func (h *GetHandler) GetOrderByID(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "order not found", http.StatusNotFound)
 		return
 	}
-	log.Panicln(order)
+	log.Println(order)
 
 	w.WriteHeader(http.StatusAccepted)
 	w.Header().Set("Content-Type", "application/json")
