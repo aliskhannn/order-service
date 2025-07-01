@@ -17,3 +17,6 @@ docker-down:
 
 producer:
 	docker compose exec kafka kafka-console-producer.sh --bootstrap-server kafka:9092 --topic ${TOPIC}
+
+format:
+	goimports -local github.com/aliskhannn/order-service -w .

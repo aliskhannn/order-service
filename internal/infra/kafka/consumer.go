@@ -3,9 +3,13 @@ package kafka
 import (
 	"context"
 	"errors"
-	"github.com/segmentio/kafka-go"
-	"log"
 	"sync"
+
+	"go.uber.org/zap"
+
+	"github.com/segmentio/kafka-go"
+
+	customerr "github.com/aliskhannn/order-service/internal/errors"
 )
 
 type messageHandler interface {
@@ -14,44 +18,87 @@ type messageHandler interface {
 
 type Consumer struct {
 	reader  *kafka.Reader
+	logger  *zap.Logger
 	handler messageHandler
 }
 
-func NewConsumer(groupID string, topic string, addr string, handler messageHandler) *Consumer {
+func NewConsumer(groupID string, topic string, addr string, l *zap.Logger, h messageHandler) *Consumer {
 	return &Consumer{
 		reader:  NewReader(groupID, topic, addr),
-		handler: handler,
+		logger:  l,
+		handler: h,
 	}
 }
 
 func (c *Consumer) ConsumeMessage(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 
+	c.logger.Info("ConsumeMessage started",
+		zap.String("topic", c.reader.Config().Topic),
+		zap.String("groupID", c.reader.Config().GroupID),
+	)
+
 	for {
-		m, err := c.reader.FetchMessage(ctx)
+		m, err := c.reader.ReadMessage(ctx)
 		if err != nil {
 			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-				log.Println("consumer stopped")
+				c.logger.Warn("context canceled or deadline exceeded, stopping consumer", zap.Error(err))
 				break
 			}
-			log.Printf("error reading message: %v", err)
+
+			c.logger.Error("error reading message", zap.Error(err))
 			continue
 		}
 
 		if err = c.handler.HandleMessage(ctx, m.Value); err != nil {
-			log.Printf("error handling message at offset %d: %v", m.Offset, err)
-
-			if err = c.reader.CommitMessages(ctx, m); err != nil {
-				log.Printf("failed to commit message: %v", err)
-			}
-
+			c.handleMessageError(m, err)
 			continue
 		}
 
-		log.Printf("message at offset %d handled successfully: %s\n", m.Offset, string(m.Value))
+		c.logger.Info("message handled successfully",
+			zap.Int64("offset", m.Offset),
+			zap.String("message", string(m.Value)),
+		)
 	}
 
-	log.Println("ConsumeMessage finished")
+	c.logger.Info("ConsumeMessage finished")
+}
+
+func (c *Consumer) handleMessageError(m kafka.Message, err error) {
+	msgStr := string(m.Value)
+
+	switch {
+	case errors.Is(err, customerr.ErrInvalidJSON):
+		c.logger.Warn("invalid JSON format",
+			zap.Int64("offset", m.Offset),
+			zap.String("message", msgStr),
+			zap.Error(err),
+		)
+	case errors.Is(err, customerr.ErrNilOrder):
+		c.logger.Warn("nil order received",
+			zap.Int64("offset", m.Offset),
+			zap.String("message", msgStr),
+			zap.Error(err),
+		)
+	case errors.Is(err, customerr.ErrValidation):
+		c.logger.Warn("validation error",
+			zap.Int64("offset", m.Offset),
+			zap.String("message", msgStr),
+			zap.Error(err),
+		)
+	case errors.Is(err, customerr.ErrCreateOrder):
+		c.logger.Warn("failed to create order",
+			zap.Int64("offset", m.Offset),
+			zap.String("message", msgStr),
+			zap.Error(err),
+		)
+	default:
+		c.logger.Error("unexpected error while handling message",
+			zap.Int64("offset", m.Offset),
+			zap.String("message", msgStr),
+			zap.Error(err),
+		)
+	}
 }
 
 func (c *Consumer) Close() error {

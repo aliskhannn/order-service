@@ -1,3 +1,5 @@
+env: "development"
+
 server:
   httpPort: ":8080"
 

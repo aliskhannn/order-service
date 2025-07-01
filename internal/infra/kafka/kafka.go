@@ -1,8 +1,9 @@
 package kafka
 
 import (
-	"github.com/segmentio/kafka-go"
 	"time"
+
+	"github.com/segmentio/kafka-go"
 )
 
 func NewReader(groupID string, topic string, addr string) *kafka.Reader {

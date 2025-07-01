@@ -2,19 +2,23 @@ package main
 
 import (
 	"context"
-	"github.com/aliskhannn/order-service/internal/config"
-	cache2 "github.com/aliskhannn/order-service/internal/infra/cache"
-	"github.com/aliskhannn/order-service/internal/infra/kafka"
-	kafkahandlers "github.com/aliskhannn/order-service/internal/kafka/handlers"
-	"github.com/aliskhannn/order-service/internal/repository"
-	"github.com/aliskhannn/order-service/internal/service"
-	"github.com/aliskhannn/order-service/internal/validator"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"log"
 	"os/signal"
 	"sync"
 	"syscall"
 	"time"
+
+	"go.uber.org/zap"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/aliskhannn/order-service/internal/config"
+	gocache "github.com/aliskhannn/order-service/internal/infra/cache"
+	"github.com/aliskhannn/order-service/internal/infra/kafka"
+	"github.com/aliskhannn/order-service/internal/kafka/handlers/order"
+	"github.com/aliskhannn/order-service/internal/logger"
+	orderrepo "github.com/aliskhannn/order-service/internal/repository/order"
+	ordersvc "github.com/aliskhannn/order-service/internal/service/order"
+	"github.com/aliskhannn/order-service/internal/validator"
 )
 
 func main() {
@@ -24,36 +28,37 @@ func main() {
 	defer stop()
 
 	cfg := config.MustLoad()
+	log := logger.CreateLogger(cfg.Env)
 
 	dbpool, err := pgxpool.New(ctx, cfg.DatabaseURL())
 	if err != nil {
-		log.Fatalf("error creating connection pool: %v", err)
+		log.Fatal("error creating connection pool", zap.Error(err))
 	}
 
-	repo := repository.NewOrderRepo(dbpool)
-	cache := cache2.NewGoCache(5*time.Minute, 10*time.Minute)
-	orderService := service.NewOrderService(repo, cache)
+	cache := gocache.New(5*time.Minute, 10*time.Minute)
+	repo := orderrepo.New(log, dbpool)
+	orderService := ordersvc.New(log, cache, repo)
 	val := validator.New()
 
-	orderCreatedHandler := kafkahandlers.NewOrderCreatedHandler(orderService, val)
+	orderCreatedHandler := order.NewCreateHandler(log, val, orderService)
 
-	consumer := kafka.NewConsumer(cfg.Kafka.GroupID, cfg.Kafka.Topic, cfg.Kafka.Addr, orderCreatedHandler)
+	consumer := kafka.NewConsumer(cfg.Kafka.GroupID, cfg.Kafka.Topic, cfg.Kafka.Addr, log, orderCreatedHandler)
 	wg.Add(1)
 	go consumer.ConsumeMessage(ctx, &wg)
 
-	log.Println("Kafka consumer started...")
+	log.Info("Kafka consumer started...")
 
 	<-ctx.Done()
-	log.Println("shutdown signal received")
+	log.Info("shutdown signal received")
 
 	wg.Wait()
 
-	log.Println("closing kafka consumer...")
+	log.Info("closing kafka consumer...")
 	err = consumer.Close()
 	if err != nil {
-		log.Printf("error closing kafka consumer: %v", err)
+		log.Error("error closing kafka consumer: %v", zap.Error(err))
 	}
 
-	log.Println("closing database pool...")
+	log.Info("closing database pool...")
 	dbpool.Close()
 }

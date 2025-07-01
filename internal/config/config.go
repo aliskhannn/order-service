@@ -2,13 +2,15 @@ package config
 
 import (
 	"fmt"
-	"github.com/joho/godotenv"
-	"github.com/spf13/viper"
 	"log"
 	"os"
+
+	"github.com/joho/godotenv"
+	"github.com/spf13/viper"
 )
 
 type Config struct {
+	Env      string   `yaml:"env"`
 	Server   Server   `yaml:"server"`
 	Database Database `yaml:"database"`
 	Kafka    Kafka    `yaml:"kafka"`

@@ -1,32 +1,51 @@
-package repository
+package order
 
 import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/aliskhannn/order-service/internal/model"
+
+	"go.uber.org/zap"
+
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	customerr "github.com/aliskhannn/order-service/internal/errors"
+	"github.com/aliskhannn/order-service/internal/model"
 )
 
-type OrderRepository struct {
-	db *pgxpool.Pool
+type Repository struct {
+	logger *zap.Logger
+	db     *pgxpool.Pool
 }
 
-func NewOrderRepo(db *pgxpool.Pool) *OrderRepository {
-	return &OrderRepository{db: db}
+func New(l *zap.Logger, db *pgxpool.Pool) *Repository {
+	return &Repository{
+		logger: l,
+		db:     db,
+	}
 }
 
-func (r *OrderRepository) SaveOrder(ctx context.Context, order *model.Order) (string, error) {
+func (r *Repository) SaveOrder(ctx context.Context, order *model.Order) (string, error) {
 	tx, err := r.db.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
-		return "", fmt.Errorf("error beginning tx: %w", err)
+		r.logger.Error("failed to begin transaction", zap.Error(err))
+		return "", fmt.Errorf("begin tx: %w", customerr.ErrTxBegin)
 	}
 	defer func() {
 		if err != nil {
-			_ = tx.Rollback(ctx)
-		} else {
-			_ = tx.Commit(ctx)
+			if rollbackErr := tx.Rollback(ctx); rollbackErr != nil {
+				r.logger.Error("failed to rollback transaction", zap.Error(rollbackErr))
+			} else {
+				r.logger.Warn("transaction rollback due to error", zap.Error(err))
+			}
+
+			return
+		}
+
+		if commitErr := tx.Commit(ctx); commitErr != nil {
+			r.logger.Error("failed to commit transaction", zap.Error(commitErr))
+			err = fmt.Errorf("commit tx: %w", customerr.ErrTxCommit)
 		}
 	}()
 
@@ -43,21 +62,23 @@ func (r *OrderRepository) SaveOrder(ctx context.Context, order *model.Order) (st
 		order.CustomerId, order.DeliveryService, order.Shardkey, order.SmId, order.DateCreated, order.OofShard,
 	)
 	if err != nil {
-		return "", fmt.Errorf("error inserting into orders: %w", err)
+		r.logger.Error("failed to insert order", zap.Error(err), zap.String("order_id", order.OrderID))
+		return "", fmt.Errorf("insert order: %w", customerr.ErrInsertOrder)
 	}
 
 	// Insert into delivery
 	d := order.Delivery
-	deleviryQuery := `
+	deliveryQuery := `
 	INSERT INTO delivery (
 	    order_uid, name, phone, zip, city, address, region, email
 	) VALUES($1, $2, $3, $4, $5, $6, $7, $8);
 	`
 
-	_, err = tx.Exec(ctx, deleviryQuery,
+	_, err = tx.Exec(ctx, deliveryQuery,
 		order.OrderID, d.Name, d.Phone, d.Zip, d.City, d.Address, d.Region, d.Email)
 	if err != nil {
-		return "", fmt.Errorf("error inserting into delivery: %w", err)
+		r.logger.Error("failed to insert delivery", zap.Error(err), zap.String("order_id", order.OrderID))
+		return "", fmt.Errorf("insert delivery: %w", customerr.ErrInsertDelivery)
 	}
 
 	// Insert into payment
@@ -72,7 +93,8 @@ func (r *OrderRepository) SaveOrder(ctx context.Context, order *model.Order) (st
 		p.Transaction, order.OrderID, p.RequestID, p.Currency, p.Provider,
 		p.Amount, p.PaymentDT, p.Bank, p.DeliveryCost, p.GoodsTotal, p.CustomFee)
 	if err != nil {
-		return "", fmt.Errorf("error inserting into deliveryt: %w", err)
+		r.logger.Error("failed to insert payment", zap.Error(err), zap.String("order_id", order.OrderID))
+		return "", fmt.Errorf("insert payment: %w", customerr.ErrInsertPayment)
 	}
 
 	// Insert each item into items
@@ -87,14 +109,15 @@ func (r *OrderRepository) SaveOrder(ctx context.Context, order *model.Order) (st
 			order.OrderID, item.ChrtID, item.TrackNumber, item.Price, item.RID,
 			item.Name, item.Sale, item.Size, item.TotalPrice, item.NmID, item.Brand, item.Status)
 		if err != nil {
-			return "", fmt.Errorf("error inserting into items: %w", err)
+			r.logger.Error("failed to insert item", zap.Error(err), zap.String("order_id", order.OrderID))
+			return "", fmt.Errorf("insert item: %w", customerr.ErrInsertItem)
 		}
 	}
 
 	return order.OrderID, nil
 }
 
-func (r *OrderRepository) GetOrderById(ctx context.Context, orderID string) (*model.Order, error) {
+func (r *Repository) GetOrderById(ctx context.Context, orderID string) (*model.Order, error) {
 	var order model.Order
 
 	// Getting order
@@ -112,9 +135,11 @@ func (r *OrderRepository) GetOrderById(ctx context.Context, orderID string) (*mo
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("no order found with id %s", orderID)
+			r.logger.Warn("order not found", zap.String("order_id", orderID))
+			return nil, fmt.Errorf("order with id %s not found: %w", orderID, customerr.ErrOrderNotFound)
 		}
-		return nil, fmt.Errorf("error getting order by id %s: %v", orderID, err)
+		r.logger.Error("failed to get order", zap.Error(err), zap.String("order_id", orderID))
+		return nil, fmt.Errorf("error getting order %s: %v", orderID, err)
 	}
 
 	// Getting delivery
@@ -131,8 +156,10 @@ func (r *OrderRepository) GetOrderById(ctx context.Context, orderID string) (*mo
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("no delivery found for order %s", orderID)
+			r.logger.Warn("delivery not found", zap.String("order_id", orderID))
+			return nil, fmt.Errorf("delivery for order %s not found: %w", orderID, customerr.ErrDeliveryNotFound)
 		}
+		r.logger.Error("failed to get delivery", zap.Error(err), zap.String("order_id", orderID))
 		return nil, fmt.Errorf("error getting delivery for order %s: %v", orderID, err)
 	}
 	order.Delivery = delivery
@@ -153,8 +180,10 @@ func (r *OrderRepository) GetOrderById(ctx context.Context, orderID string) (*mo
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("no payment found for order %s", orderID)
+			r.logger.Warn("payment not found", zap.String("order_id", orderID))
+			return nil, fmt.Errorf("payment for order %s not found: %w", orderID, customerr.ErrPaymentNotFound)
 		}
+		r.logger.Error("failed to get payment", zap.Error(err), zap.String("order_id", orderID))
 		return nil, fmt.Errorf("error getting payment for order %s: %v", orderID, err)
 	}
 	order.Payment = payment
@@ -168,6 +197,7 @@ func (r *OrderRepository) GetOrderById(ctx context.Context, orderID string) (*mo
 	`
 	rows, err := r.db.Query(ctx, itemsQuery, orderID)
 	if err != nil {
+		r.logger.Error("failed to get items", zap.Error(err), zap.String("order_id", orderID))
 		return nil, fmt.Errorf("error getting items for order %s: %v", orderID, err)
 	}
 	defer rows.Close()
@@ -181,7 +211,8 @@ func (r *OrderRepository) GetOrderById(ctx context.Context, orderID string) (*mo
 			&item.NmID, &item.Brand, &item.Status,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("error scanning item for order %s: %v", orderID, err)
+			r.logger.Error("failed to scan item", zap.Error(err), zap.String("order_id", orderID))
+			return nil, fmt.Errorf("error scanning item for order %s: %v", orderID, customerr.ErrItemScanFailed)
 		}
 		items = append(items, item)
 	}

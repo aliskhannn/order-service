@@ -3,23 +3,28 @@ package order
 import (
 	"context"
 	"encoding/json"
-	"errors"
-	mocks "github.com/aliskhannn/order-service/internal/mocks/api/order"
-	"github.com/aliskhannn/order-service/internal/model"
-	"github.com/go-chi/chi/v5"
-	"github.com/golang/mock/gomock"
-	"github.com/stretchr/testify/assert"
+	customerr "github.com/aliskhannn/order-service/internal/errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"go.uber.org/zap"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/assert"
+
+	mocks "github.com/aliskhannn/order-service/internal/mocks/api/order"
+	"github.com/aliskhannn/order-service/internal/model"
 )
 
 func TestGetOrderByID_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
+	logger := zap.NewNop()
 	mockService := mocks.NewMockorderService(ctrl)
-	h := NewGetHandler(mockService)
+	h := NewGetHandler(logger, mockService)
 
 	orderID := "b563feb7b2b84b6test"
 	expectedOrder := &model.Order{OrderID: orderID}
@@ -47,13 +52,13 @@ func TestGetOrderByID_NotFound(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
+	logger := zap.NewNop()
 	mockService := mocks.NewMockorderService(ctrl)
-	h := NewGetHandler(mockService)
+	h := NewGetHandler(logger, mockService)
 
 	orderID := "not_exist"
-	expectedError := errors.New("not found")
 
-	mockService.EXPECT().GetOrderByID(gomock.Any(), orderID).Return(nil, expectedError)
+	mockService.EXPECT().GetOrderByID(gomock.Any(), orderID).Return(nil, customerr.ErrOrderNotFound)
 
 	req := httptest.NewRequest(http.MethodGet, "/orders/"+orderID, nil)
 	rctx := chi.NewRouteContext()
@@ -71,8 +76,9 @@ func TestGetOrderByID_MissingID(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
+	logger := zap.NewNop()
 	mockService := mocks.NewMockorderService(ctrl)
-	h := NewGetHandler(mockService)
+	h := NewGetHandler(logger, mockService)
 
 	req := httptest.NewRequest(http.MethodGet, "/orders/", nil)
 

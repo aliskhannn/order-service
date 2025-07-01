@@ -1,24 +1,30 @@
-package handlers
+package order
 
 import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/aliskhannn/order-service/internal/mocks/kafka/handlers"
-	"github.com/aliskhannn/order-service/internal/model"
+	customerr "github.com/aliskhannn/order-service/internal/errors"
+	"testing"
+
+	"go.uber.org/zap"
+
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
-	"testing"
+
+	"github.com/aliskhannn/order-service/internal/mocks/kafka/handlers"
+	"github.com/aliskhannn/order-service/internal/model"
 )
 
 func TestHandleMessage_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
+	logger := zap.NewNop()
 	mockService := handlers.NewMockorderService(ctrl)
 	mockValidator := handlers.NewMockvalidator(ctrl)
 
-	handler := NewOrderCreatedHandler(mockService, mockValidator)
+	handler := NewCreateHandler(logger, mockValidator, mockService)
 
 	order := &model.Order{
 		OrderID: "test-id",
@@ -34,7 +40,8 @@ func TestHandleMessage_Success(t *testing.T) {
 }
 
 func TestHandleMessage_InvalidJSON(t *testing.T) {
-	handler := NewOrderCreatedHandler(nil, nil)
+	logger := zap.NewNop()
+	handler := NewCreateHandler(logger, nil, nil)
 
 	invalidMsg := []byte(`{invalid json}`)
 
@@ -44,7 +51,8 @@ func TestHandleMessage_InvalidJSON(t *testing.T) {
 }
 
 func TestHandleMessage_NilOrder(t *testing.T) {
-	handler := NewOrderCreatedHandler(nil, nil)
+	logger := zap.NewNop()
+	handler := NewCreateHandler(logger, nil, nil)
 
 	nilOrder := []byte(`null`)
 
@@ -57,14 +65,15 @@ func TestHandleMessage_ValidationFails(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
+	logger := zap.NewNop()
 	mockValidator := handlers.NewMockvalidator(ctrl)
 
 	order := &model.Order{OrderID: "bad"}
 	msg, _ := json.Marshal(order)
 
-	mockValidator.EXPECT().Validate(order).Return(errors.New("validation failed"))
+	mockValidator.EXPECT().Validate(order).Return(customerr.ErrValidation)
 
-	handler := NewOrderCreatedHandler(nil, mockValidator)
+	handler := NewCreateHandler(logger, mockValidator, nil)
 
 	err := handler.HandleMessage(context.Background(), msg)
 	assert.Error(t, err)
@@ -75,6 +84,7 @@ func TestHandleMessage_CreateOrderFails(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
+	logger := zap.NewNop()
 	mockValidator := handlers.NewMockvalidator(ctrl)
 	mockService := handlers.NewMockorderService(ctrl)
 
@@ -84,7 +94,7 @@ func TestHandleMessage_CreateOrderFails(t *testing.T) {
 	mockValidator.EXPECT().Validate(order).Return(nil)
 	mockService.EXPECT().CreateOrder(gomock.Any(), order).Return("", errors.New("db failure"))
 
-	handler := NewOrderCreatedHandler(mockService, mockValidator)
+	handler := NewCreateHandler(logger, mockValidator, mockService)
 
 	err := handler.HandleMessage(context.Background(), msg)
 	assert.Error(t, err)

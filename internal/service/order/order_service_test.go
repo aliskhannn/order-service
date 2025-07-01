@@ -1,24 +1,28 @@
-package service
+package order
 
 import (
 	"context"
 	"errors"
-	mocks "github.com/aliskhannn/order-service/internal/mocks/service"
-	"github.com/aliskhannn/order-service/internal/model"
-	"github.com/golang/mock/gomock"
-	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 	"testing"
 	"time"
+
+	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/assert"
+
+	mocks "github.com/aliskhannn/order-service/internal/mocks/service"
+	"github.com/aliskhannn/order-service/internal/model"
 )
 
 func TestCreateOrder(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockRepo := mocks.NewMockorderRepository(ctrl)
+	logger := zap.NewNop()
 	mockCache := mocks.NewMockorderCache(ctrl)
+	mockRepo := mocks.NewMockorderRepository(ctrl)
 
-	orderService := NewOrderService(mockRepo, mockCache)
+	orderService := New(logger, mockCache, mockRepo)
 
 	ctx := context.Background()
 	order := &model.Order{
@@ -83,10 +87,11 @@ func TestGetOrderByID_FromCache(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockRepo := mocks.NewMockorderRepository(ctrl)
+	logger := zap.NewNop()
 	mockCache := mocks.NewMockorderCache(ctrl)
+	mockRepo := mocks.NewMockorderRepository(ctrl)
 
-	orderService := NewOrderService(mockRepo, mockCache)
+	orderService := New(logger, mockCache, mockRepo)
 
 	ctx := context.Background()
 	orderID := "b563feb7b2b84b6test"
@@ -103,10 +108,11 @@ func TestGetOrderByID_FromRepo(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockRepo := mocks.NewMockorderRepository(ctrl)
+	logger := zap.NewNop()
 	mockCache := mocks.NewMockorderCache(ctrl)
+	mockRepo := mocks.NewMockorderRepository(ctrl)
 
-	orderService := NewOrderService(mockRepo, mockCache)
+	orderService := New(logger, mockCache, mockRepo)
 
 	ctx := context.Background()
 	orderID := "b563feb7b2b84b6test"
@@ -125,10 +131,11 @@ func TestGetOrderById_RepoError(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockRepo := mocks.NewMockorderRepository(ctrl)
+	logger := zap.NewNop()
 	mockCache := mocks.NewMockorderCache(ctrl)
+	mockRepo := mocks.NewMockorderRepository(ctrl)
 
-	orderService := NewOrderService(mockRepo, mockCache)
+	orderService := New(logger, mockCache, mockRepo)
 
 	ctx := context.Background()
 	orderID := "b563feb7b2b84b6test"

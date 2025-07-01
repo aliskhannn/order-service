@@ -3,18 +3,24 @@ package main
 import (
 	"context"
 	"errors"
-	"github.com/aliskhannn/order-service/internal/api/order"
-	"github.com/aliskhannn/order-service/internal/config"
-	cache2 "github.com/aliskhannn/order-service/internal/infra/cache"
-	"github.com/aliskhannn/order-service/internal/repository"
-	"github.com/aliskhannn/order-service/internal/service"
-	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"log"
 	"net/http"
+	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"go.uber.org/zap"
+
+	"github.com/aliskhannn/order-service/internal/api/order"
+	"github.com/aliskhannn/order-service/internal/config"
+	gocache "github.com/aliskhannn/order-service/internal/infra/cache"
+	"github.com/aliskhannn/order-service/internal/logger"
+	orderrepo "github.com/aliskhannn/order-service/internal/repository/order"
+	ordersvc "github.com/aliskhannn/order-service/internal/service/order"
 )
 
 func main() {
@@ -22,19 +28,27 @@ func main() {
 	defer stop()
 
 	cfg := config.MustLoad()
+	log := logger.CreateLogger(cfg.Env)
 
 	dbpool, err := pgxpool.New(ctx, cfg.DatabaseURL())
 	if err != nil {
-		log.Fatalf("error creating connection pool: %v", err)
+		log.Fatal("error creating connection pool", zap.Error(err))
 	}
 
-	repo := repository.NewOrderRepo(dbpool)
-	cache := cache2.NewGoCache(5*time.Minute, 10*time.Minute)
-	orderService := service.NewOrderService(repo, cache)
-	orderHTTPHandler := order.NewGetHandler(orderService)
+	cache := gocache.New(5*time.Minute, 10*time.Minute)
+	repo := orderrepo.New(log, dbpool)
+	orderService := ordersvc.New(log, cache, repo)
+	orderGetHandler := order.NewGetHandler(log, orderService)
 
 	r := chi.NewRouter()
-	r.Get("/orders/{id}", orderHTTPHandler.GetOrderByID)
+
+	r.Use(middleware.RequestID)
+	r.Use(middleware.RealIP)
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
+	r.Use(middleware.Timeout(60 * time.Second))
+
+	r.Get("/orders/{id}", orderGetHandler.GetOrderByID)
 
 	server := &http.Server{
 		Addr:    cfg.Server.HTTPPort,
@@ -42,27 +56,28 @@ func main() {
 	}
 
 	go func() {
-		log.Printf("HTTP server listening on %s", cfg.Server.HTTPPort)
-		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("server failed: %v", err)
+		log.Info("starting HTTP server", zap.String("port", cfg.Server.HTTPPort))
+		if err = server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatal("server failed", zap.Error(err))
 		}
 	}()
 
 	<-ctx.Done()
-	log.Println("shutdown signal received")
+	log.Info("shutdown signal received")
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	log.Println("shutting down HTTP server...")
+	log.Info("shutting down HTTP server...")
 	if err = server.Shutdown(shutdownCtx); err != nil {
-		log.Fatalf("could not shutdown HTTP server: %v", err)
+		log.Error("could not shutdown HTTP server", zap.Error(err))
+		os.Exit(1)
 	}
 
 	if errors.Is(shutdownCtx.Err(), context.DeadlineExceeded) {
-		log.Fatalln("timeout exceeded, forcing shutdown")
+		log.Fatal("timeout exceeded, forcing shutdown")
 	}
 
-	log.Println("closing database pool...")
+	log.Info("closing database pool...")
 	dbpool.Close()
 }

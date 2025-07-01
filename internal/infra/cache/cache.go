@@ -1,16 +1,18 @@
 package cache
 
 import (
-	"github.com/aliskhannn/order-service/internal/model"
-	"github.com/patrickmn/go-cache"
 	"time"
+
+	"github.com/patrickmn/go-cache"
+
+	"github.com/aliskhannn/order-service/internal/model"
 )
 
 type GoCache struct {
 	c *cache.Cache
 }
 
-func NewGoCache(defaultExpiration, cleanupInterval time.Duration) *GoCache {
+func New(defaultExpiration, cleanupInterval time.Duration) *GoCache {
 	return &GoCache{
 		c: cache.New(defaultExpiration, cleanupInterval),
 	}
@@ -28,5 +30,5 @@ func (g *GoCache) Get(orderID string) (*model.Order, bool) {
 }
 
 func (g *GoCache) Set(orderID string, order *model.Order) {
-	g.c.Set(orderID, &order, cache.DefaultExpiration)
+	g.c.Set(orderID, order, cache.DefaultExpiration)
 }
