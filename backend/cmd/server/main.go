@@ -3,20 +3,19 @@ package main
 import (
 	"context"
 	"errors"
-	"github.com/go-chi/cors"
+	"github.com/aliskhannn/order-service/internal/api/handlers/order"
+	"github.com/aliskhannn/order-service/internal/api/router"
+	server2 "github.com/aliskhannn/order-service/internal/api/server"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"go.uber.org/zap"
 
-	"github.com/aliskhannn/order-service/internal/api/order"
 	"github.com/aliskhannn/order-service/internal/config"
 	gocache "github.com/aliskhannn/order-service/internal/infra/cache"
 	"github.com/aliskhannn/order-service/internal/logger"
@@ -48,27 +47,8 @@ func main() {
 	orderService := ordersvc.New(log, cache, repo)
 	orderGetHandler := order.NewGetHandler(log, orderService)
 
-	r := chi.NewRouter()
-
-	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
-	r.Use(middleware.Timeout(60 * time.Second))
-	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"https://*", "http://*"},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
-		ExposedHeaders:   []string{"Link"},
-		AllowCredentials: false,
-	}))
-
-	r.Get("/orders/{id}", orderGetHandler.GetOrderByID)
-
-	server := &http.Server{
-		Addr:    cfg.Server.HTTPPort,
-		Handler: r,
-	}
+	r := router.New(orderGetHandler)
+	server := server2.New(cfg.Server.HTTPPort, r)
 
 	go func() {
 		log.Info("starting HTTP server", zap.String("port", cfg.Server.HTTPPort))

@@ -32,6 +32,7 @@ func New(defaultExpiration, cleanupInterval time.Duration, l *zap.Logger, r orde
 }
 
 func (g *GoCache) Get(orderID uuid.UUID) (*model.Order, bool) {
+	g.logger.Info("getting order from cache", zap.String("orderID", orderID.String()))
 	val, found := g.c.Get(orderID.String())
 	if !found {
 		return nil, false
@@ -43,6 +44,7 @@ func (g *GoCache) Get(orderID uuid.UUID) (*model.Order, bool) {
 }
 
 func (g *GoCache) Set(orderID uuid.UUID, order *model.Order) {
+	g.logger.Info("setting order in cache", zap.String("orderID", orderID.String()))
 	g.c.Set(orderID.String(), order, cache.DefaultExpiration)
 }
 

@@ -42,6 +42,8 @@ func (s *Service) CreateOrder(ctx context.Context, order *model.Order) (uuid.UUI
 		return uuid.Nil, fmt.Errorf("repository error: %w", err)
 	}
 
+	s.logger.Info("recieved order id", zap.String("orderID is", orderID.String()))
+
 	s.cache.Set(orderID, order)
 
 	s.logger.Info("order saved and cached", zap.String("orderID", orderID.String()))
