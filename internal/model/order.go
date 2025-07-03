@@ -1,11 +1,12 @@
 package model
 
 import (
+	"github.com/google/uuid"
 	"time"
 )
 
 type Order struct {
-	OrderID           string    `json:"order_uid" validate:"required"`
+	OrderID           uuid.UUID `json:"order_uid"`
 	TrackNumber       string    `json:"track_number" validate:"required"`
 	Entry             string    `json:"entry" validate:"required"`
 	Delivery          Delivery  `json:"delivery" validate:"required"`
@@ -17,6 +18,6 @@ type Order struct {
 	DeliveryService   string    `json:"delivery_service" validate:"required"`
 	Shardkey          string    `json:"shardkey" validate:"required"`
 	SmId              int       `json:"sm_id" validate:"required"`
-	DateCreated       time.Time `json:"date_created" validate:"required"`
+	DateCreated       time.Time `json:"date_created"`
 	OofShard          string    `json:"oof_shard" validate:"required"`
 }

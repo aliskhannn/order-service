@@ -8,9 +8,9 @@ import (
 	context "context"
 	reflect "reflect"
 
-	gomock "github.com/golang/mock/gomock"
-
 	model "github.com/aliskhannn/order-service/internal/model"
+	gomock "github.com/golang/mock/gomock"
+	uuid "github.com/google/uuid"
 )
 
 // MockorderService is a mock of orderService interface.
@@ -37,7 +37,7 @@ func (m *MockorderService) EXPECT() *MockorderServiceMockRecorder {
 }
 
 // GetOrderByID mocks base method.
-func (m *MockorderService) GetOrderByID(ctx context.Context, orderID string) (*model.Order, error) {
+func (m *MockorderService) GetOrderByID(ctx context.Context, orderID uuid.UUID) (*model.Order, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetOrderByID", ctx, orderID)
 	ret0, _ := ret[0].(*model.Order)

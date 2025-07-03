@@ -2,7 +2,7 @@
 -- +goose StatementBegin
 CREATE TABLE IF NOT EXISTS items (
     id SERIAL PRIMARY KEY,
-    order_id TEXT NOT NULL REFERENCES orders(order_uid) ON DELETE CASCADE,
+    order_id UUID NOT NULL REFERENCES orders(order_uid) ON DELETE CASCADE,
     chrt_id BIGINT NOT NULL,
     track_number VARCHAR(32) NOT NULL,
     price INT NOT NULL,

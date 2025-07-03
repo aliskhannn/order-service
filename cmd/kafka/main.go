@@ -2,12 +2,10 @@ package main
 
 import (
 	"context"
+	"go.uber.org/zap"
 	"os/signal"
 	"sync"
 	"syscall"
-	"time"
-
-	"go.uber.org/zap"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -35,14 +33,21 @@ func main() {
 		log.Fatal("error creating connection pool", zap.Error(err))
 	}
 
-	cache := gocache.New(5*time.Minute, 10*time.Minute)
 	repo := orderrepo.New(log, dbpool)
+	cache := gocache.New(cfg.Cache.DefaultExpiration, cfg.Cache.CleanupInterval, log, repo)
+
+	// Preload cache with existing orders
+	err = cache.Preload(ctx, cfg.Cache.PreloadLimit)
+	if err != nil {
+		log.Fatal("error preloading cache", zap.Error(err))
+	}
+
 	orderService := ordersvc.New(log, cache, repo)
 	val := validator.New()
 
 	orderCreatedHandler := order.NewCreateHandler(log, val, orderService)
 
-	consumer := kafka.NewConsumer(cfg.Kafka.GroupID, cfg.Kafka.Topic, cfg.Kafka.Addr, log, orderCreatedHandler)
+	consumer := kafka.NewConsumer(cfg.Kafka.GroupID, cfg.Kafka.Topic, cfg.Kafka.Brokers, log, orderCreatedHandler)
 	wg.Add(1)
 	go consumer.ConsumeMessage(ctx, &wg)
 

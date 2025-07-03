@@ -1,6 +1,11 @@
 package cache
 
 import (
+	"context"
+	"fmt"
+	customerr "github.com/aliskhannn/order-service/internal/errors"
+	"github.com/google/uuid"
+	"go.uber.org/zap"
 	"time"
 
 	"github.com/patrickmn/go-cache"
@@ -8,18 +13,26 @@ import (
 	"github.com/aliskhannn/order-service/internal/model"
 )
 
-type GoCache struct {
-	c *cache.Cache
+type orderRepository interface {
+	GetLastOrders(ctx context.Context, limit int) ([]model.Order, error)
 }
 
-func New(defaultExpiration, cleanupInterval time.Duration) *GoCache {
+type GoCache struct {
+	c      *cache.Cache
+	logger *zap.Logger
+	repo   orderRepository
+}
+
+func New(defaultExpiration, cleanupInterval time.Duration, l *zap.Logger, r orderRepository) *GoCache {
 	return &GoCache{
-		c: cache.New(defaultExpiration, cleanupInterval),
+		c:      cache.New(defaultExpiration, cleanupInterval),
+		logger: l,
+		repo:   r,
 	}
 }
 
-func (g *GoCache) Get(orderID string) (*model.Order, bool) {
-	val, found := g.c.Get(orderID)
+func (g *GoCache) Get(orderID uuid.UUID) (*model.Order, bool) {
+	val, found := g.c.Get(orderID.String())
 	if !found {
 		return nil, false
 	}
@@ -29,6 +42,27 @@ func (g *GoCache) Get(orderID string) (*model.Order, bool) {
 	return order, ok
 }
 
-func (g *GoCache) Set(orderID string, order *model.Order) {
-	g.c.Set(orderID, order, cache.DefaultExpiration)
+func (g *GoCache) Set(orderID uuid.UUID, order *model.Order) {
+	g.c.Set(orderID.String(), order, cache.DefaultExpiration)
+}
+
+func (g *GoCache) Preload(ctx context.Context, limit int) error {
+	orders, err := g.repo.GetLastOrders(ctx, limit)
+	if err != nil {
+		g.logger.Error("failed to preload cache", zap.Error(err))
+		return fmt.Errorf("preload cache: %w", customerr.ErrCachePreload)
+	}
+
+	if len(orders) == 0 {
+		g.logger.Info("no orders found to preload cache")
+		return nil
+	}
+
+	for _, order := range orders {
+		o := order // Create a copy to avoid issues with the loop variable
+		g.Set(order.OrderID, &o)
+	}
+
+	g.logger.Info("cache preloaded successfully", zap.Int("orders_count", len(orders)))
+	return nil
 }

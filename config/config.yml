@@ -9,4 +9,12 @@ database:
 kafka:
   groupID: "order-consumer-group-id"
   topic: "order.created"
-  addr: "kafka:9092"
+  brokers:
+    - "kafka:9092"
+    - "kafka2:9093"
+    - "kafka3:9094"
+
+cache:
+  defaultExpiration: "5m"
+  cleanupInterval: "10m"
+  preloadLimit: 100

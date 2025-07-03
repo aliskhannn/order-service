@@ -22,9 +22,9 @@ type Consumer struct {
 	handler messageHandler
 }
 
-func NewConsumer(groupID string, topic string, addr string, l *zap.Logger, h messageHandler) *Consumer {
+func NewConsumer(groupID string, topic string, brokers []string, l *zap.Logger, h messageHandler) *Consumer {
 	return &Consumer{
-		reader:  NewReader(groupID, topic, addr),
+		reader:  NewReader(groupID, topic, brokers),
 		logger:  l,
 		handler: h,
 	}
@@ -32,6 +32,13 @@ func NewConsumer(groupID string, topic string, addr string, l *zap.Logger, h mes
 
 func (c *Consumer) ConsumeMessage(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
+	defer c.Close()
+
+	go func() {
+		<-ctx.Done()
+		c.logger.Info("Received shutdown signal, closing consumer")
+		c.Close()
+	}()
 
 	c.logger.Info("ConsumeMessage started",
 		zap.String("topic", c.reader.Config().Topic),

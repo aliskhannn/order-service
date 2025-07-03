@@ -35,8 +35,15 @@ func main() {
 		log.Fatal("error creating connection pool", zap.Error(err))
 	}
 
-	cache := gocache.New(5*time.Minute, 10*time.Minute)
 	repo := orderrepo.New(log, dbpool)
+	cache := gocache.New(cfg.Cache.DefaultExpiration, cfg.Cache.CleanupInterval, log, repo)
+
+	// Preload cache with existing orders
+	err = cache.Preload(ctx, cfg.Cache.PreloadLimit)
+	if err != nil {
+		log.Fatal("error preloading cache", zap.Error(err))
+	}
+
 	orderService := ordersvc.New(log, cache, repo)
 	orderGetHandler := order.NewGetHandler(log, orderService)
 

@@ -1,7 +1,9 @@
 -- +goose Up
 -- +goose StatementBegin
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
 CREATE TABLE IF NOT EXISTS orders (
-    order_uid TEXT PRIMARY KEY,
+    order_uid UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     track_number VARCHAR(32) NOT NULL,
     entry VARCHAR(10),
     locale VARCHAR(5),
@@ -10,7 +12,7 @@ CREATE TABLE IF NOT EXISTS orders (
     delivery_service VARCHAR(50),
     shardkey VARCHAR(5),
     sm_id INT,
-    date_created TIMESTAMPTZ NOT NULL,
+    date_created TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     oof_shard VARCHAR(5)
 );
 
@@ -18,5 +20,6 @@ CREATE TABLE IF NOT EXISTS orders (
 
 -- +goose Down
 -- +goose StatementBegin
+DROP EXTENSION IF EXISTS "uuid-ossp";
 DROP TABLE IF EXISTS orders;
 -- +goose StatementEnd

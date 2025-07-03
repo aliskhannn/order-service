@@ -8,9 +8,9 @@ import (
 	context "context"
 	reflect "reflect"
 
-	gomock "github.com/golang/mock/gomock"
-
 	model "github.com/aliskhannn/order-service/internal/model"
+	gomock "github.com/golang/mock/gomock"
+	uuid "github.com/google/uuid"
 )
 
 // MockorderRepository is a mock of orderRepository interface.
@@ -36,8 +36,23 @@ func (m *MockorderRepository) EXPECT() *MockorderRepositoryMockRecorder {
 	return m.recorder
 }
 
+// GetItemsByOrderID mocks base method.
+func (m *MockorderRepository) GetItemsByOrderID(ctx context.Context, orderID uuid.UUID) ([]model.Item, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetItemsByOrderID", ctx, orderID)
+	ret0, _ := ret[0].([]model.Item)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetItemsByOrderID indicates an expected call of GetItemsByOrderID.
+func (mr *MockorderRepositoryMockRecorder) GetItemsByOrderID(ctx, orderID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetItemsByOrderID", reflect.TypeOf((*MockorderRepository)(nil).GetItemsByOrderID), ctx, orderID)
+}
+
 // GetOrderById mocks base method.
-func (m *MockorderRepository) GetOrderById(ctx context.Context, orderID string) (*model.Order, error) {
+func (m *MockorderRepository) GetOrderById(ctx context.Context, orderID uuid.UUID) (*model.Order, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetOrderById", ctx, orderID)
 	ret0, _ := ret[0].(*model.Order)
@@ -52,10 +67,10 @@ func (mr *MockorderRepositoryMockRecorder) GetOrderById(ctx, orderID interface{}
 }
 
 // SaveOrder mocks base method.
-func (m *MockorderRepository) SaveOrder(ctx context.Context, order *model.Order) (string, error) {
+func (m *MockorderRepository) SaveOrder(ctx context.Context, order *model.Order) (uuid.UUID, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SaveOrder", ctx, order)
-	ret0, _ := ret[0].(string)
+	ret0, _ := ret[0].(uuid.UUID)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -90,7 +105,7 @@ func (m *MockorderCache) EXPECT() *MockorderCacheMockRecorder {
 }
 
 // Get mocks base method.
-func (m *MockorderCache) Get(orderID string) (*model.Order, bool) {
+func (m *MockorderCache) Get(orderID uuid.UUID) (*model.Order, bool) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", orderID)
 	ret0, _ := ret[0].(*model.Order)
@@ -105,7 +120,7 @@ func (mr *MockorderCacheMockRecorder) Get(orderID interface{}) *gomock.Call {
 }
 
 // Set mocks base method.
-func (m *MockorderCache) Set(orderID string, order *model.Order) {
+func (m *MockorderCache) Set(orderID uuid.UUID, order *model.Order) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "Set", orderID, order)
 }

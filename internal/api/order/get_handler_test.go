@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	customerr "github.com/aliskhannn/order-service/internal/errors"
+	"github.com/google/uuid"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -26,14 +27,14 @@ func TestGetOrderByID_Success(t *testing.T) {
 	mockService := mocks.NewMockorderService(ctrl)
 	h := NewGetHandler(logger, mockService)
 
-	orderID := "b563feb7b2b84b6test"
+	orderID := uuid.New()
 	expectedOrder := &model.Order{OrderID: orderID}
 
 	mockService.EXPECT().GetOrderByID(gomock.Any(), orderID).Return(expectedOrder, nil)
 
-	req := httptest.NewRequest(http.MethodGet, "/orders/"+orderID, nil)
+	req := httptest.NewRequest(http.MethodGet, "/orders/"+orderID.String(), nil)
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("id", orderID)
+	rctx.URLParams.Add("id", orderID.String())
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	rr := httptest.NewRecorder()
@@ -56,13 +57,13 @@ func TestGetOrderByID_NotFound(t *testing.T) {
 	mockService := mocks.NewMockorderService(ctrl)
 	h := NewGetHandler(logger, mockService)
 
-	orderID := "not_exist"
+	orderID := uuid.New()
 
 	mockService.EXPECT().GetOrderByID(gomock.Any(), orderID).Return(nil, customerr.ErrOrderNotFound)
 
-	req := httptest.NewRequest(http.MethodGet, "/orders/"+orderID, nil)
+	req := httptest.NewRequest(http.MethodGet, "/orders/"+orderID.String(), nil)
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("id", orderID)
+	rctx.URLParams.Add("id", orderID.String())
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	rr := httptest.NewRecorder()

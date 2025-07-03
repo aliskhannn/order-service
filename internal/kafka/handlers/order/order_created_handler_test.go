@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	customerr "github.com/aliskhannn/order-service/internal/errors"
+	"github.com/google/uuid"
 	"testing"
 
 	"go.uber.org/zap"
@@ -26,14 +27,15 @@ func TestHandleMessage_Success(t *testing.T) {
 
 	handler := NewCreateHandler(logger, mockValidator, mockService)
 
+	orderID := uuid.New()
 	order := &model.Order{
-		OrderID: "test-id",
+		OrderID: orderID,
 	}
 
 	msg, _ := json.Marshal(order)
 
 	mockValidator.EXPECT().Validate(order).Return(nil)
-	mockService.EXPECT().CreateOrder(gomock.Any(), order).Return("test-id", nil)
+	mockService.EXPECT().CreateOrder(gomock.Any(), order).Return(orderID, nil)
 
 	err := handler.HandleMessage(context.Background(), msg)
 	assert.NoError(t, err)
@@ -68,7 +70,7 @@ func TestHandleMessage_ValidationFails(t *testing.T) {
 	logger := zap.NewNop()
 	mockValidator := handlers.NewMockvalidator(ctrl)
 
-	order := &model.Order{OrderID: "bad"}
+	order := &model.Order{OrderID: uuid.New()}
 	msg, _ := json.Marshal(order)
 
 	mockValidator.EXPECT().Validate(order).Return(customerr.ErrValidation)
@@ -88,11 +90,11 @@ func TestHandleMessage_CreateOrderFails(t *testing.T) {
 	mockValidator := handlers.NewMockvalidator(ctrl)
 	mockService := handlers.NewMockorderService(ctrl)
 
-	order := &model.Order{OrderID: "fail"}
+	order := &model.Order{OrderID: uuid.New()}
 	msg, _ := json.Marshal(order)
 
 	mockValidator.EXPECT().Validate(order).Return(nil)
-	mockService.EXPECT().CreateOrder(gomock.Any(), order).Return("", errors.New("db failure"))
+	mockService.EXPECT().CreateOrder(gomock.Any(), order).Return(uuid.UUID{}, errors.New("db failure"))
 
 	handler := NewCreateHandler(logger, mockValidator, mockService)
 

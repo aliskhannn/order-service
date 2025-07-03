@@ -2,7 +2,7 @@
 -- +goose StatementBegin
 CREATE TABLE IF NOT EXISTS payment (
     transaction TEXT PRIMARY KEY,
-    order_uid TEXT NOT NULL REFERENCES orders(order_uid) ON DELETE CASCADE,
+    order_uid UUID NOT NULL REFERENCES orders(order_uid) ON DELETE CASCADE,
     request_id TEXT,
     currency VARCHAR(5) NOT NULL,
     provider VARCHAR(50) NOT NULL,

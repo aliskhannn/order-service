@@ -3,6 +3,7 @@ package order
 import (
 	"context"
 	"errors"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"testing"
 	"time"
@@ -25,8 +26,9 @@ func TestCreateOrder(t *testing.T) {
 	orderService := New(logger, mockCache, mockRepo)
 
 	ctx := context.Background()
+	orderID := uuid.New()
 	order := &model.Order{
-		OrderID:     "b563feb7b2b84b6test",
+		OrderID:     orderID,
 		TrackNumber: "WBILMTESTTRACK",
 		Entry:       "WBIL",
 		Delivery: model.Delivery{
@@ -75,12 +77,12 @@ func TestCreateOrder(t *testing.T) {
 		OofShard:          "oofshard123",
 	}
 
-	mockRepo.EXPECT().SaveOrder(ctx, order).Return("b563feb7b2b84b6test", nil)
-	mockCache.EXPECT().Set("b563feb7b2b84b6test", order)
+	mockRepo.EXPECT().SaveOrder(ctx, order).Return(orderID, nil)
+	mockCache.EXPECT().Set(orderID, order)
 
-	orderID, err := orderService.CreateOrder(ctx, order)
+	resOrderID, err := orderService.CreateOrder(ctx, order)
 	assert.NoError(t, err)
-	assert.Equal(t, "b563feb7b2b84b6test", orderID)
+	assert.Equal(t, orderID, resOrderID)
 }
 
 func TestGetOrderByID_FromCache(t *testing.T) {
@@ -94,7 +96,7 @@ func TestGetOrderByID_FromCache(t *testing.T) {
 	orderService := New(logger, mockCache, mockRepo)
 
 	ctx := context.Background()
-	orderID := "b563feb7b2b84b6test"
+	orderID := uuid.New()
 	expectedOrder := &model.Order{OrderID: orderID}
 
 	mockCache.EXPECT().Get(orderID).Return(expectedOrder, true)
@@ -115,16 +117,22 @@ func TestGetOrderByID_FromRepo(t *testing.T) {
 	orderService := New(logger, mockCache, mockRepo)
 
 	ctx := context.Background()
-	orderID := "b563feb7b2b84b6test"
+	orderID := uuid.New()
 	expectedOrder := &model.Order{OrderID: orderID}
+	expectedItems := []model.Item{
+		{RID: "item1"},
+		{RID: "item2"},
+	}
 
 	mockCache.EXPECT().Get(orderID).Return(nil, false)
 	mockRepo.EXPECT().GetOrderById(ctx, orderID).Return(expectedOrder, nil)
-	mockCache.EXPECT().Set(orderID, expectedOrder)
+	mockRepo.EXPECT().GetItemsByOrderID(ctx, orderID).Return(expectedItems, nil)
+	mockCache.EXPECT().Set(orderID, gomock.Any())
 
 	order, err := orderService.GetOrderByID(ctx, orderID)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedOrder, order)
+	assert.Equal(t, expectedItems, order.Items)
 }
 
 func TestGetOrderById_RepoError(t *testing.T) {
@@ -138,11 +146,36 @@ func TestGetOrderById_RepoError(t *testing.T) {
 	orderService := New(logger, mockCache, mockRepo)
 
 	ctx := context.Background()
-	orderID := "b563feb7b2b84b6test"
+	orderID := uuid.New()
 	expectedErr := errors.New("not found")
 
 	mockCache.EXPECT().Get(orderID).Return(nil, false)
 	mockRepo.EXPECT().GetOrderById(ctx, orderID).Return(nil, expectedErr)
+
+	order, err := orderService.GetOrderByID(ctx, orderID)
+	assert.Nil(t, order)
+	assert.ErrorIs(t, err, expectedErr)
+}
+
+func TestGetOrderByID_ItemsError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	logger := zap.NewNop()
+	mockCache := mocks.NewMockorderCache(ctrl)
+	mockRepo := mocks.NewMockorderRepository(ctrl)
+
+	orderService := New(logger, mockCache, mockRepo)
+
+	ctx := context.Background()
+	orderID := uuid.New()
+
+	expectedOrder := &model.Order{OrderID: orderID}
+	expectedErr := errors.New("items fetch failed")
+
+	mockCache.EXPECT().Get(orderID).Return(nil, false)
+	mockRepo.EXPECT().GetOrderById(ctx, orderID).Return(expectedOrder, nil)
+	mockRepo.EXPECT().GetItemsByOrderID(ctx, orderID).Return(nil, expectedErr)
 
 	order, err := orderService.GetOrderByID(ctx, orderID)
 	assert.Nil(t, order)
