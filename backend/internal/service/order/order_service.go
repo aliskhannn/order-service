@@ -42,10 +42,6 @@ func (s *Service) CreateOrder(ctx context.Context, order *model.Order) (uuid.UUI
 		return uuid.Nil, fmt.Errorf("repository error: %w", err)
 	}
 
-	s.logger.Info("recieved order id", zap.String("orderID is", orderID.String()))
-
-	s.cache.Set(orderID, order)
-
 	s.logger.Info("order saved and cached", zap.String("orderID", orderID.String()))
 
 	return orderID, nil
@@ -53,9 +49,11 @@ func (s *Service) CreateOrder(ctx context.Context, order *model.Order) (uuid.UUI
 
 func (s *Service) GetOrderByID(ctx context.Context, orderID uuid.UUID) (*model.Order, error) {
 	// Check cache first
-	if order, found := s.cache.Get(orderID); found {
-		s.logger.Info("order found in cache", zap.String("orderID", orderID.String()))
-		return order, nil
+	if s.cache != nil {
+		if order, found := s.cache.Get(orderID); found {
+			s.logger.Info("order found in cache", zap.String("orderID", orderID.String()))
+			return order, nil
+		}
 	}
 
 	order, err := s.repo.GetOrderById(ctx, orderID)

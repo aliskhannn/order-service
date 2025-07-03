@@ -10,7 +10,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/aliskhannn/order-service/internal/config"
-	gocache "github.com/aliskhannn/order-service/internal/infra/cache"
 	"github.com/aliskhannn/order-service/internal/infra/kafka"
 	"github.com/aliskhannn/order-service/internal/kafka/handlers/order"
 	"github.com/aliskhannn/order-service/internal/logger"
@@ -34,15 +33,7 @@ func main() {
 	}
 
 	repo := orderrepo.New(log, dbpool)
-	cache := gocache.New(cfg.Cache.DefaultExpiration, cfg.Cache.CleanupInterval, log, repo)
-
-	// Preload cache with existing orders
-	err = cache.Preload(ctx, cfg.Cache.PreloadLimit)
-	if err != nil {
-		log.Fatal("error preloading cache", zap.Error(err))
-	}
-
-	orderService := ordersvc.New(log, cache, repo)
+	orderService := ordersvc.New(log, nil, repo)
 	val := validator.New()
 
 	orderCreatedHandler := order.NewCreateHandler(log, val, orderService)

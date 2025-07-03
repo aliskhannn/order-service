@@ -78,7 +78,6 @@ func TestCreateOrder(t *testing.T) {
 	}
 
 	mockRepo.EXPECT().SaveOrder(ctx, order).Return(orderID, nil)
-	mockCache.EXPECT().Set(orderID, order)
 
 	resOrderID, err := orderService.CreateOrder(ctx, order)
 	assert.NoError(t, err)

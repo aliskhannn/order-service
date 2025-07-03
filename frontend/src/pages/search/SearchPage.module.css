@@ -1,0 +1,11 @@
+.searchPage {
+	display: flex;
+	align-items: center;
+	flex-direction: column;
+	height: 100%;
+	padding-top: 50px;
+}
+
+.title {
+	text-align: center;
+}

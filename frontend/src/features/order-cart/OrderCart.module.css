@@ -1,0 +1,21 @@
+.orderCart {
+	border: none;
+	background-color: rgb(59, 59, 59);
+	padding: 20px;
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+	border-radius: 12px;
+	cursor: pointer;
+	transition: box-shadow 100ms ease-in;
+
+	h2, p {
+		margin: 0;
+	}
+}
+
+.orderCart:hover {
+	-webkit-box-shadow: 0px 0px 10px 0px rgba(255, 255, 255, 0.2);
+-moz-box-shadow: 0px 0px 10px 0px rgba(255, 255, 255, 0.2);
+box-shadow: 0px 0px 20px 0px rgba(255, 255, 255, 0.3);
+}

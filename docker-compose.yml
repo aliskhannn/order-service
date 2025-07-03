@@ -1,6 +1,18 @@
 services:
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    ports:
+      - "8081:80"
+    networks:
+      - app-network
+    depends_on:
+      - server
+    environment:
+      - VITE_API_URL=http://server:8080
+
   server:
-    build: ./
+    build: ./backend
     command: ./server
     container_name: server
     ports:
@@ -16,11 +28,13 @@ services:
       - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASSWORD}
       - DB_NAME=${DB_NAME}
+    env_file:
+      - .env
     networks:
       - app-network
 
   consumer:
-    build: ./
+    build: ./backend
     command: ./kafka
     container_name: consumer
     depends_on:
@@ -39,12 +53,15 @@ services:
       - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASSWORD}
       - DB_NAME=${DB_NAME}
+    env_file:
+      - .env
     networks:
       - app-network
 
   migrations:
     image: kukymbr/goose-docker:3.24.2
     container_name: migrator
+    command: up
     depends_on:
       db:
         condition: service_healthy
@@ -52,13 +69,15 @@ services:
       - GOOSE_DRIVER=${GOOSE_DRIVER}
       - GOOSE_DBSTRING=host=${DB_HOST} port=${DB_PORT} user=${DB_USER} password=${DB_PASSWORD} dbname=${DB_NAME}
       - GOOSE_MIGRATION_DIR=${GOOSE_MIGRATION_DIR}
+    env_file:
+      - .env
     healthcheck:
       test: [ "CMD", "sh", "-c", "exit 0" ]
       interval: 5s
       timeout: 3s
       retries: 1
     volumes:
-      - ./migrations:/migrations
+      - ./backend/migrations:/migrations
     networks:
       - app-network
 
@@ -70,6 +89,8 @@ services:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
+    env_file:
+      - .env
     ports:
       - "5434:5432"
     healthcheck:
