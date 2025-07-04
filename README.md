@@ -2,7 +2,7 @@
 
 ## Overview
 
-This project is an order service with a backend written in Go and a frontend using Vite. The backend uses Kafka for messaging and Redis for caching.
+This project is an order service with a backend written in Go and a frontend using Vite. The backend uses Kafka for messaging and go-cache package for caching.
 
 ---
 
@@ -29,7 +29,7 @@ Edit `.env` as needed.
 
 ## Running the Application with Docker Compose
 
-To build and start all services (backend, frontend, Kafka, Redis):
+To build and start all services (backend, frontend, Kafka etc):
 
 ```bash
 make docker-up
