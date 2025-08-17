@@ -3,9 +3,8 @@ package order
 import (
 	"context"
 	"fmt"
-	"github.com/google/uuid"
 
-	"go.uber.org/zap"
+	"github.com/google/uuid"
 
 	"github.com/aliskhannn/order-service/internal/model"
 )
@@ -22,27 +21,24 @@ type orderCache interface {
 	Set(orderID uuid.UUID, order *model.Order)
 }
 type Service struct {
-	logger *zap.Logger
-	cache  orderCache
-	repo   orderRepository
+	cache orderCache
+	repo  orderRepository
 }
 
-func New(l *zap.Logger, c orderCache, repo orderRepository) *Service {
+func New(c orderCache, repo orderRepository) *Service {
 	return &Service{
-		logger: l,
-		cache:  c,
-		repo:   repo,
+		cache: c,
+		repo:  repo,
 	}
 }
 
 func (s *Service) CreateOrder(ctx context.Context, order *model.Order) (uuid.UUID, error) {
 	orderID, err := s.repo.SaveOrder(ctx, order)
 	if err != nil {
-		s.logger.Error("failed to save order", zap.Error(err))
-		return uuid.Nil, fmt.Errorf("repository error: %w", err)
+		return uuid.Nil, fmt.Errorf("save order: %w", err)
 	}
 
-	s.logger.Info("order saved and cached", zap.String("orderID", orderID.String()))
+	//s.cache.Set(orderID, order)
 
 	return orderID, nil
 }
@@ -51,28 +47,23 @@ func (s *Service) GetOrderByID(ctx context.Context, orderID uuid.UUID) (*model.O
 	// Check cache first
 	if s.cache != nil {
 		if order, found := s.cache.Get(orderID); found {
-			s.logger.Info("order found in cache", zap.String("orderID", orderID.String()))
 			return order, nil
 		}
 	}
 
 	order, err := s.repo.GetOrderById(ctx, orderID)
 	if err != nil {
-		s.logger.Error("failed to get order by ID", zap.String("orderID", orderID.String()), zap.Error(err))
-		return nil, fmt.Errorf("repository error: %w", err)
+		return nil, fmt.Errorf("get order by id: %w", err)
 	}
 
 	items, err := s.repo.GetItemsByOrderID(ctx, orderID)
 	if err != nil {
-		s.logger.Error("failed to get items by order ID", zap.String("orderID", orderID.String()), zap.Error(err))
-		return nil, fmt.Errorf("repository error: %w", err)
+		return nil, fmt.Errorf("get items by order id: %w", err)
 	}
 
 	order.Items = items
 
 	s.cache.Set(orderID, order)
-
-	s.logger.Info("order retrieved from repository and cached", zap.String("orderID", orderID.String()))
 
 	return order, nil
 }

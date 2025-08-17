@@ -1,12 +1,14 @@
 package router
 
 import (
-	"github.com/aliskhannn/order-service/internal/api/handlers/order"
+	"net/http"
+	"time"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
-	"net/http"
-	"time"
+
+	"github.com/aliskhannn/order-service/internal/api/handlers/order"
 )
 
 func New(orderGetHandler *order.GetHandler) http.Handler {

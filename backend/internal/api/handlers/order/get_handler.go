@@ -2,15 +2,17 @@ package order
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"github.com/google/uuid"
 	"net/http"
+
+	"github.com/google/uuid"
+
+	"github.com/aliskhannn/order-service/internal/api/handlers"
+	orderrepo "github.com/aliskhannn/order-service/internal/repository/order"
 
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 
-	customerr "github.com/aliskhannn/order-service/internal/errors"
 	"github.com/aliskhannn/order-service/internal/model"
 )
 
@@ -35,42 +37,31 @@ func (h *GetHandler) GetOrderByID(w http.ResponseWriter, r *http.Request) {
 	orderStr := chi.URLParam(r, "id")
 	orderID, err := uuid.Parse(orderStr)
 	if err != nil {
-		http.Error(w, "invalid UUID format", http.StatusBadRequest)
+		h.logger.Error("failed to parse order id", zap.String("orderID", orderStr), zap.Error(err))
+		handlers.WriteError(w, http.StatusBadRequest, "invalid UUID format")
 		return
 	}
 
 	if orderID == uuid.Nil {
-		http.Error(w, "order ID is required", http.StatusBadRequest)
+		h.logger.Error("order id is empty", zap.String("orderID", orderStr))
+		handlers.WriteError(w, http.StatusBadRequest, "order ID is required")
 		return
 	}
 
 	order, err := h.orderService.GetOrderByID(r.Context(), orderID)
 	if err != nil {
-		switch {
-		case errors.Is(err, customerr.ErrOrderNotFound):
-			http.Error(w, "order not found", http.StatusNotFound)
-		case errors.Is(err, customerr.ErrDeliveryNotFound):
-			http.Error(w, "delivery not found", http.StatusNotFound)
-		case errors.Is(err, customerr.ErrPaymentNotFound):
-			http.Error(w, "payment not found", http.StatusNotFound)
-		case errors.Is(err, customerr.ErrScanRow):
-			http.Error(w, "failed to scan row", http.StatusInternalServerError)
-		default:
-			h.logger.Error("failed to get order", zap.Error(err))
-			http.Error(w, "internal server error", http.StatusInternalServerError)
+		if errors.Is(err, orderrepo.ErrOrderNotFound) {
+			h.logger.Info("order not found", zap.String("orderID", orderID.String()))
+			handlers.WriteError(w, http.StatusNotFound, "order not found")
+			return
 		}
 
+		h.logger.Error("unexpected error getting order", zap.String("orderID", orderID.String()), zap.Error(err))
+		handlers.WriteError(w, http.StatusInternalServerError, "internal server error")
 		return
 	}
 
-	h.logger.Info("order received", zap.Any("order", order))
+	h.logger.Info("order retrieved", zap.String("orderID", orderID.String()))
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusAccepted)
-	err = json.NewEncoder(w).Encode(order)
-	if err != nil {
-		h.logger.Error("failed to encode order response", zap.Error(err))
-		http.Error(w, "failed to encode response", http.StatusInternalServerError)
-		return
-	}
+	handlers.WriteJSON(w, http.StatusOK, order)
 }

@@ -3,14 +3,14 @@ package main
 import (
 	"context"
 	"errors"
-	"github.com/aliskhannn/order-service/internal/api/handlers/order"
-	"github.com/aliskhannn/order-service/internal/api/router"
-	server2 "github.com/aliskhannn/order-service/internal/api/server"
 	"net/http"
-	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/aliskhannn/order-service/internal/api/handlers/order"
+	"github.com/aliskhannn/order-service/internal/api/router"
+	server2 "github.com/aliskhannn/order-service/internal/api/server"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -35,7 +35,7 @@ func main() {
 		log.Fatal("error creating connection pool", zap.Error(err))
 	}
 
-	repo := orderrepo.New(log, dbpool)
+	repo := orderrepo.New(dbpool, log)
 	cache := gocache.New(cfg.Cache.DefaultExpiration, cfg.Cache.CleanupInterval, log, repo)
 
 	// Preload cache with existing orders
@@ -44,7 +44,7 @@ func main() {
 		log.Fatal("error preloading cache", zap.Error(err))
 	}
 
-	orderService := ordersvc.New(log, cache, repo)
+	orderService := ordersvc.New(cache, repo)
 	orderGetHandler := order.NewGetHandler(log, orderService)
 
 	r := router.New(orderGetHandler)
@@ -66,7 +66,6 @@ func main() {
 	log.Info("shutting down HTTP server...")
 	if err = server.Shutdown(shutdownCtx); err != nil {
 		log.Error("could not shutdown HTTP server", zap.Error(err))
-		os.Exit(1)
 	}
 
 	if errors.Is(shutdownCtx.Err(), context.DeadlineExceeded) {

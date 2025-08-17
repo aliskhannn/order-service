@@ -3,11 +3,13 @@ package order
 import (
 	"context"
 	"encoding/json"
-	customerr "github.com/aliskhannn/order-service/internal/errors"
-	"github.com/google/uuid"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/google/uuid"
+
+	"github.com/aliskhannn/order-service/internal/repository/order"
 
 	"go.uber.org/zap"
 
@@ -41,7 +43,7 @@ func TestGetOrderByID_Success(t *testing.T) {
 
 	h.GetOrderByID(rr, req)
 
-	assert.Equal(t, http.StatusAccepted, rr.Code)
+	assert.Equal(t, http.StatusOK, rr.Code)
 
 	var order model.Order
 	err := json.NewDecoder(rr.Body).Decode(&order)
@@ -59,7 +61,7 @@ func TestGetOrderByID_NotFound(t *testing.T) {
 
 	orderID := uuid.New()
 
-	mockService.EXPECT().GetOrderByID(gomock.Any(), orderID).Return(nil, customerr.ErrOrderNotFound)
+	mockService.EXPECT().GetOrderByID(gomock.Any(), orderID).Return(nil, order.ErrOrderNotFound)
 
 	req := httptest.NewRequest(http.MethodGet, "/orders/"+orderID.String(), nil)
 	rctx := chi.NewRouteContext()

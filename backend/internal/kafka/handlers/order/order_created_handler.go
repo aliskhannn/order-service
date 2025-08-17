@@ -4,11 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
 	"github.com/google/uuid"
 
 	"go.uber.org/zap"
 
-	customerr "github.com/aliskhannn/order-service/internal/errors"
 	"github.com/aliskhannn/order-service/internal/model"
 )
 
@@ -38,25 +38,23 @@ func NewCreateHandler(l *zap.Logger, v validator, s orderService) *CreateHandler
 func (h *CreateHandler) HandleMessage(ctx context.Context, msg []byte) error {
 	var order *model.Order
 	if err := json.Unmarshal(msg, &order); err != nil {
-		h.logger.Warn("ivalid JSON format", zap.Error(err))
-		return fmt.Errorf("%w: %v", customerr.ErrInvalidJSON, err)
+		return fmt.Errorf("%w: %v", ErrInvalidJSON, err)
 	}
 
 	if order == nil {
-		h.logger.Warn("received nil order in message")
-		return customerr.ErrNilOrder
+		return fmt.Errorf("%w", ErrNilOrder)
 	}
 
 	if err := h.validator.Validate(order); err != nil {
-		h.logger.Warn("validation error", zap.Error(err))
-		return fmt.Errorf("%w: %v", customerr.ErrValidation, err)
+		return fmt.Errorf("%w: %v", ErrValidation, err)
 	}
 
-	if _, err := h.orderService.CreateOrder(ctx, order); err != nil {
-		h.logger.Error("failed to create order", zap.String("orderID", order.OrderID.String()), zap.Error(err))
-		return fmt.Errorf("%w: %v", customerr.ErrCreateOrder, err)
+	orderID, err := h.orderService.CreateOrder(ctx, order)
+	if err != nil {
+		return fmt.Errorf("%w: %v", ErrCreateOrder, err)
 	}
 
-	h.logger.Info("order created successfully", zap.String("orderID", order.OrderID.String()))
+	h.logger.Info("Order processed successfully", zap.String("orderID", orderID.String()))
+
 	return nil
 }

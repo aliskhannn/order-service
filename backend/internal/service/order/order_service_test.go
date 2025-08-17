@@ -3,12 +3,11 @@ package order
 import (
 	"context"
 	"errors"
-	"github.com/google/uuid"
-	"go.uber.org/zap"
 	"testing"
 	"time"
 
 	"github.com/golang/mock/gomock"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 
 	mocks "github.com/aliskhannn/order-service/internal/mocks/service"
@@ -19,11 +18,10 @@ func TestCreateOrder(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	logger := zap.NewNop()
 	mockCache := mocks.NewMockorderCache(ctrl)
 	mockRepo := mocks.NewMockorderRepository(ctrl)
 
-	orderService := New(logger, mockCache, mockRepo)
+	orderService := New(mockCache, mockRepo)
 
 	ctx := context.Background()
 	orderID := uuid.New()
@@ -88,11 +86,10 @@ func TestGetOrderByID_FromCache(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	logger := zap.NewNop()
 	mockCache := mocks.NewMockorderCache(ctrl)
 	mockRepo := mocks.NewMockorderRepository(ctrl)
 
-	orderService := New(logger, mockCache, mockRepo)
+	orderService := New(mockCache, mockRepo)
 
 	ctx := context.Background()
 	orderID := uuid.New()
@@ -109,11 +106,10 @@ func TestGetOrderByID_FromRepo(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	logger := zap.NewNop()
 	mockCache := mocks.NewMockorderCache(ctrl)
 	mockRepo := mocks.NewMockorderRepository(ctrl)
 
-	orderService := New(logger, mockCache, mockRepo)
+	orderService := New(mockCache, mockRepo)
 
 	ctx := context.Background()
 	orderID := uuid.New()
@@ -138,11 +134,10 @@ func TestGetOrderById_RepoError(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	logger := zap.NewNop()
 	mockCache := mocks.NewMockorderCache(ctrl)
 	mockRepo := mocks.NewMockorderRepository(ctrl)
 
-	orderService := New(logger, mockCache, mockRepo)
+	orderService := New(mockCache, mockRepo)
 
 	ctx := context.Background()
 	orderID := uuid.New()
@@ -160,11 +155,10 @@ func TestGetOrderByID_ItemsError(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	logger := zap.NewNop()
 	mockCache := mocks.NewMockorderCache(ctrl)
 	mockRepo := mocks.NewMockorderRepository(ctrl)
 
-	orderService := New(logger, mockCache, mockRepo)
+	orderService := New(mockCache, mockRepo)
 
 	ctx := context.Background()
 	orderID := uuid.New()

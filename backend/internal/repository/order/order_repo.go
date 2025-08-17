@@ -4,49 +4,38 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
 
 	"go.uber.org/zap"
+
+	"github.com/google/uuid"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	customerr "github.com/aliskhannn/order-service/internal/errors"
 	"github.com/aliskhannn/order-service/internal/model"
 )
 
 type Repository struct {
-	logger *zap.Logger
 	db     *pgxpool.Pool
+	logger *zap.Logger
 }
 
-func New(l *zap.Logger, db *pgxpool.Pool) *Repository {
+func New(db *pgxpool.Pool, lg *zap.Logger) *Repository {
 	return &Repository{
-		logger: l,
 		db:     db,
+		logger: lg,
 	}
 }
 
 func (r *Repository) SaveOrder(ctx context.Context, order *model.Order) (uuid.UUID, error) {
-	tx, err := r.db.BeginTx(ctx, pgx.TxOptions{})
+	tx, err := r.db.Begin(ctx)
 	if err != nil {
-		r.logger.Error("failed to begin transaction", zap.Error(err))
-		return uuid.Nil, fmt.Errorf("begin tx: %w", customerr.ErrTxBegin)
+		return uuid.Nil, fmt.Errorf("failed begin tx: %w", err)
 	}
+	// Ensure the transaction will be rolled back if not committed
 	defer func() {
-		if err != nil {
-			if rollbackErr := tx.Rollback(ctx); rollbackErr != nil {
-				r.logger.Error("failed to rollback transaction", zap.Error(rollbackErr))
-			} else {
-				r.logger.Warn("transaction rollback due to error", zap.Error(err))
-			}
-
-			return
-		}
-
-		if commitErr := tx.Commit(ctx); commitErr != nil {
-			r.logger.Error("failed to commit transaction", zap.Error(commitErr))
-			err = fmt.Errorf("commit tx: %w", customerr.ErrTxCommit)
+		if rerr := tx.Rollback(ctx); rerr != nil && !errors.Is(rerr, pgx.ErrTxClosed) {
+			r.logger.Error("failed to rollback transaction", zap.Error(rerr))
 		}
 	}()
 
@@ -63,10 +52,8 @@ func (r *Repository) SaveOrder(ctx context.Context, order *model.Order) (uuid.UU
 		order.CustomerId, order.DeliveryService, order.Shardkey, order.SmId, order.OofShard,
 	).Scan(&order.OrderID)
 	if err != nil {
-		r.logger.Error("failed to insert order", zap.Error(err), zap.String("order_id", order.OrderID.String()))
-		return uuid.Nil, fmt.Errorf("insert order: %w", customerr.ErrInsertOrder)
+		return uuid.Nil, fmt.Errorf("failed to create order: %w", err)
 	}
-	r.logger.Info("order inserted", zap.String("order_id", order.OrderID.String()))
 
 	// Insert into delivery
 	d := order.Delivery
@@ -79,10 +66,8 @@ func (r *Repository) SaveOrder(ctx context.Context, order *model.Order) (uuid.UU
 	_, err = tx.Exec(ctx, deliveryQuery,
 		order.OrderID, d.Name, d.Phone, d.Zip, d.City, d.Address, d.Region, d.Email)
 	if err != nil {
-		r.logger.Error("failed to insert delivery", zap.Error(err), zap.String("order_id", order.OrderID.String()))
-		return uuid.Nil, fmt.Errorf("insert delivery: %w", customerr.ErrInsertDelivery)
+		return uuid.Nil, fmt.Errorf("failed to insert delivery: %w", err)
 	}
-	r.logger.Info("delivery inserted", zap.String("order_id", order.OrderID.String()))
 
 	// Insert into payment
 	p := order.Payment
@@ -96,10 +81,8 @@ func (r *Repository) SaveOrder(ctx context.Context, order *model.Order) (uuid.UU
 		p.Transaction, order.OrderID, p.RequestID, p.Currency, p.Provider,
 		p.Amount, p.PaymentDT, p.Bank, p.DeliveryCost, p.GoodsTotal, p.CustomFee)
 	if err != nil {
-		r.logger.Error("failed to insert payment", zap.Error(err), zap.String("order_id", order.OrderID.String()))
-		return uuid.Nil, fmt.Errorf("insert payment: %w", customerr.ErrInsertPayment)
+		return uuid.Nil, fmt.Errorf("failed to insert payment: %w", err)
 	}
-	r.logger.Info("payment inserted", zap.String("order_id", order.OrderID.String()))
 
 	// Insert each item into items
 	itemQuery := `
@@ -113,11 +96,14 @@ func (r *Repository) SaveOrder(ctx context.Context, order *model.Order) (uuid.UU
 			order.OrderID, item.ChrtID, item.TrackNumber, item.Price, item.RID,
 			item.Name, item.Sale, item.Size, item.TotalPrice, item.NmID, item.Brand, item.Status)
 		if err != nil {
-			r.logger.Error("failed to insert item", zap.Error(err), zap.String("order_id", order.OrderID.String()))
-			return uuid.Nil, fmt.Errorf("insert item: %w", customerr.ErrInsertItem)
+			return uuid.Nil, fmt.Errorf("failed to insert item: %w", err)
 		}
 	}
-	r.logger.Info("items inserted", zap.String("order_id", order.OrderID.String()))
+
+	// Commit the transaction
+	if err = tx.Commit(ctx); err != nil {
+		return uuid.Nil, fmt.Errorf("failed to commit transaction: %w", err)
+	}
 
 	return order.OrderID, nil
 }
@@ -158,10 +144,10 @@ func (r *Repository) GetOrderById(ctx context.Context, orderID uuid.UUID) (*mode
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("get order by id: %w", customerr.ErrOrderNotFound)
+			return nil, fmt.Errorf("failed to get order by id: %w", ErrOrderNotFound)
 		}
 
-		return nil, fmt.Errorf("scan row: %w", customerr.ErrScanRow)
+		return nil, fmt.Errorf("failed to scan row: %w", err)
 	}
 
 	o.Delivery = d
@@ -189,7 +175,7 @@ func (r *Repository) GetLastOrders(ctx context.Context, limit int) ([]model.Orde
 
 	rows, err := r.db.Query(ctx, query, limit)
 	if err != nil {
-		return nil, fmt.Errorf("get last orders: %w", customerr.ErrGetLastOrders)
+		return nil, fmt.Errorf("failed to get last orders: %w", err)
 	}
 	defer rows.Close()
 
@@ -213,11 +199,7 @@ func (r *Repository) GetLastOrders(ctx context.Context, limit int) ([]model.Orde
 			&p.Amount, &p.PaymentDT, &p.Bank, &p.DeliveryCost, &p.GoodsTotal, &p.CustomFee,
 		)
 		if err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				return nil, fmt.Errorf("get order by id: %w", customerr.ErrOrderNotFound)
-			}
-
-			return nil, fmt.Errorf("scan row: %w", customerr.ErrScanRow)
+			return nil, fmt.Errorf("failed to scan order row: %w", err)
 		}
 
 		o.Delivery = d
@@ -225,11 +207,16 @@ func (r *Repository) GetLastOrders(ctx context.Context, limit int) ([]model.Orde
 
 		items, err := r.GetItemsByOrderID(ctx, o.OrderID)
 		if err != nil {
-			return nil, fmt.Errorf("get items by order id: %w", customerr.ErrGetItemsByOrderId)
+			return nil, err
 		}
+
 		o.Items = items
 
 		orders = append(orders, o)
+	}
+
+	if len(orders) == 0 {
+		return []model.Order{}, nil
 	}
 
 	return orders, nil
@@ -244,22 +231,28 @@ func (r *Repository) GetItemsByOrderID(ctx context.Context, orderID uuid.UUID) (
 
 	rows, err := r.db.Query(ctx, query, orderID)
 	if err != nil {
-		return nil, fmt.Errorf("get items by order id: %w", customerr.ErrGetItemsByOrderId)
+		return nil, fmt.Errorf("failed to get items by order id: %w", err)
 	}
 	defer rows.Close()
 
 	var items []model.Item
+
 	for rows.Next() {
 		var item model.Item
+
 		err = rows.Scan(
 			&item.ChrtID, &item.TrackNumber, &item.Price, &item.RID, &item.Name, &item.Sale,
 			&item.Size, &item.TotalPrice, &item.NmID, &item.Brand, &item.Status,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("scan item row: %w", customerr.ErrItemScanFailed)
+			return nil, fmt.Errorf("failed to scan row: %w", err)
 		}
 
 		items = append(items, item)
+	}
+
+	if len(items) == 0 {
+		return []model.Item{}, nil
 	}
 
 	return items, nil

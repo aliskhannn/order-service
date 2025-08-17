@@ -2,10 +2,11 @@ package main
 
 import (
 	"context"
-	"go.uber.org/zap"
 	"os/signal"
 	"sync"
 	"syscall"
+
+	"go.uber.org/zap"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -32,8 +33,8 @@ func main() {
 		log.Fatal("error creating connection pool", zap.Error(err))
 	}
 
-	repo := orderrepo.New(log, dbpool)
-	orderService := ordersvc.New(log, nil, repo)
+	repo := orderrepo.New(dbpool, log)
+	orderService := ordersvc.New(nil, repo)
 	val := validator.New()
 
 	orderCreatedHandler := order.NewCreateHandler(log, val, orderService)

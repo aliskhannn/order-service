@@ -3,10 +3,10 @@ package cache
 import (
 	"context"
 	"fmt"
-	customerr "github.com/aliskhannn/order-service/internal/errors"
+	"time"
+
 	"github.com/google/uuid"
 	"go.uber.org/zap"
-	"time"
 
 	"github.com/patrickmn/go-cache"
 
@@ -50,7 +50,7 @@ func (g *GoCache) Preload(ctx context.Context, limit int) error {
 	orders, err := g.repo.GetLastOrders(ctx, limit)
 	if err != nil {
 		g.logger.Error("failed to preload cache", zap.Error(err))
-		return fmt.Errorf("preload cache: %w", customerr.ErrCachePreload)
+		return fmt.Errorf("%w: %v", ErrCachePreload, err)
 	}
 
 	if len(orders) == 0 {

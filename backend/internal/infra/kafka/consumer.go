@@ -5,11 +5,13 @@ import (
 	"errors"
 	"sync"
 
+	"go.uber.org/zap/zapcore"
+
+	"github.com/aliskhannn/order-service/internal/kafka/handlers/order"
+
 	"go.uber.org/zap"
 
 	"github.com/segmentio/kafka-go"
-
-	customerr "github.com/aliskhannn/order-service/internal/errors"
 )
 
 type messageHandler interface {
@@ -32,12 +34,25 @@ func NewConsumer(groupID string, topic string, brokers []string, l *zap.Logger, 
 
 func (c *Consumer) ConsumeMessage(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
-	defer c.Close()
+	defer func() {
+		if err := c.Close(); err != nil {
+			c.logger.Error("error closing consumer", zap.Error(err))
+			return
+		}
+
+		c.logger.Info("Consumer closed successfully")
+	}()
 
 	go func() {
 		<-ctx.Done()
 		c.logger.Info("Received shutdown signal, closing consumer")
-		c.Close()
+
+		if err := c.Close(); err != nil {
+			c.logger.Error("error closing consumer", zap.Error(err))
+			return
+		}
+
+		c.logger.Info("Consumer closed successfully")
 	}()
 
 	c.logger.Info("ConsumeMessage started",
@@ -74,33 +89,36 @@ func (c *Consumer) ConsumeMessage(ctx context.Context, wg *sync.WaitGroup) {
 func (c *Consumer) handleMessageError(m kafka.Message, err error) {
 	msgStr := string(m.Value)
 
+	var lvl zapcore.Level
+	var msg string
+
 	switch {
-	case errors.Is(err, customerr.ErrInvalidJSON):
-		c.logger.Warn("invalid JSON format",
-			zap.Int64("offset", m.Offset),
-			zap.String("message", msgStr),
-			zap.Error(err),
-		)
-	case errors.Is(err, customerr.ErrNilOrder):
-		c.logger.Warn("nil order received",
-			zap.Int64("offset", m.Offset),
-			zap.String("message", msgStr),
-			zap.Error(err),
-		)
-	case errors.Is(err, customerr.ErrValidation):
-		c.logger.Warn("validation error",
-			zap.Int64("offset", m.Offset),
-			zap.String("message", msgStr),
-			zap.Error(err),
-		)
-	case errors.Is(err, customerr.ErrCreateOrder):
-		c.logger.Warn("failed to create order",
-			zap.Int64("offset", m.Offset),
-			zap.String("message", msgStr),
-			zap.Error(err),
-		)
+	case errors.Is(err, order.ErrInvalidJSON):
+		lvl = zap.WarnLevel
+		msg = "invalid JSON format"
+	case errors.Is(err, order.ErrNilOrder):
+		lvl = zap.WarnLevel
+		msg = "nil order received"
+	case errors.Is(err, order.ErrValidation):
+		lvl = zap.WarnLevel
+		msg = "validation error"
+	case errors.Is(err, order.ErrCreateOrder):
+		lvl = zap.WarnLevel
+		msg = "failed to create order"
 	default:
-		c.logger.Error("unexpected error while handling message",
+		lvl = zap.ErrorLevel
+		msg = "unexpected error while handling message"
+	}
+
+	switch lvl {
+	case zap.WarnLevel:
+		c.logger.Warn(msg,
+			zap.Int64("offset", m.Offset),
+			zap.String("message", msgStr),
+			zap.Error(err),
+		)
+	case zap.ErrorLevel:
+		c.logger.Error(msg,
 			zap.Int64("offset", m.Offset),
 			zap.String("message", msgStr),
 			zap.Error(err),

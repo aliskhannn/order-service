@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	customerr "github.com/aliskhannn/order-service/internal/errors"
-	"github.com/google/uuid"
 	"testing"
+
+	"github.com/google/uuid"
 
 	"go.uber.org/zap"
 
@@ -60,7 +60,7 @@ func TestHandleMessage_NilOrder(t *testing.T) {
 
 	err := handler.HandleMessage(context.Background(), nilOrder)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "order is nil")
+	assert.Contains(t, err.Error(), "nil order")
 }
 
 func TestHandleMessage_ValidationFails(t *testing.T) {
@@ -73,13 +73,13 @@ func TestHandleMessage_ValidationFails(t *testing.T) {
 	order := &model.Order{OrderID: uuid.New()}
 	msg, _ := json.Marshal(order)
 
-	mockValidator.EXPECT().Validate(order).Return(customerr.ErrValidation)
+	mockValidator.EXPECT().Validate(order).Return(ErrValidation)
 
 	handler := NewCreateHandler(logger, mockValidator, nil)
 
 	err := handler.HandleMessage(context.Background(), msg)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "validation error")
+	assert.Contains(t, err.Error(), "failed to validate order")
 }
 
 func TestHandleMessage_CreateOrderFails(t *testing.T) {
@@ -100,5 +100,5 @@ func TestHandleMessage_CreateOrderFails(t *testing.T) {
 
 	err := handler.HandleMessage(context.Background(), msg)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "error creating order")
+	assert.Contains(t, err.Error(), "failed to create order")
 }
