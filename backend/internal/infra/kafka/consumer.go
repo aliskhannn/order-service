@@ -41,29 +41,11 @@ func NewConsumer(groupID string, topic string, brokers []string, l *zap.Logger, 
 // the configured messageHandler. It runs until the provided context is canceled.
 // The WaitGroup is decremented when consumption stops, allowing coordinated shutdown.
 //
-// This method ensures graceful shutdown by closing the reader when the context is canceled
-// or when errors occur.
+// This method ensures graceful shutdown by checking for context cancellation.
 func (c *Consumer) ConsumeMessage(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 	defer func() {
-		if err := c.Close(); err != nil {
-			c.logger.Error("error closing consumer", zap.Error(err))
-			return
-		}
-
-		c.logger.Info("Consumer closed successfully")
-	}()
-
-	// Listen for context cancellation to gracefully shut down the consumer.
-	go func() {
-		<-ctx.Done()
-		c.logger.Info("Received shutdown signal, closing consumer")
-
-		if err := c.Close(); err != nil {
-			c.logger.Error("error closing consumer", zap.Error(err))
-			return
-		}
-
+		_ = c.Close()
 		c.logger.Info("Consumer closed successfully")
 	}()
 
@@ -73,29 +55,33 @@ func (c *Consumer) ConsumeMessage(ctx context.Context, wg *sync.WaitGroup) {
 	)
 
 	for {
-		m, err := c.reader.ReadMessage(ctx)
-		if err != nil {
-			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-				c.logger.Warn("context canceled or deadline exceeded, stopping consumer", zap.Error(err))
-				break
+		select {
+		case <-ctx.Done():
+			c.logger.Info("shutdown signal received, stopping consumer")
+			return
+		default:
+			m, err := c.reader.ReadMessage(ctx)
+			if err != nil {
+				if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+					c.logger.Warn("context canceled or deadline exceeded, stopping consumer", zap.Error(err))
+					break
+				}
+
+				c.logger.Error("error reading message", zap.Error(err))
+				continue
 			}
 
-			c.logger.Error("error reading message", zap.Error(err))
-			continue
-		}
+			if err = c.handler.HandleMessage(ctx, m.Value); err != nil {
+				c.handleMessageError(m, err)
+				continue
+			}
 
-		if err = c.handler.HandleMessage(ctx, m.Value); err != nil {
-			c.handleMessageError(m, err)
-			continue
+			c.logger.Info("message handled successfully",
+				zap.Int64("offset", m.Offset),
+				zap.String("message", string(m.Value)),
+			)
 		}
-
-		c.logger.Info("message handled successfully",
-			zap.Int64("offset", m.Offset),
-			zap.String("message", string(m.Value)),
-		)
 	}
-
-	c.logger.Info("ConsumeMessage finished")
 }
 
 // handleMessageError logs message handling errors with appropriate severity

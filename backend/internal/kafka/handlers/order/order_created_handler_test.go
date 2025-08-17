@@ -13,7 +13,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/aliskhannn/order-service/internal/mocks/kafka/handlers/order"
+	handlers "github.com/aliskhannn/order-service/internal/mocks/kafka/handlers/order"
 	"github.com/aliskhannn/order-service/internal/model"
 )
 

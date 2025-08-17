@@ -8,14 +8,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/aliskhannn/order-service/internal/api/handlers/order"
-	"github.com/aliskhannn/order-service/internal/api/router"
-	server2 "github.com/aliskhannn/order-service/internal/api/server"
-
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"go.uber.org/zap"
 
+	"github.com/aliskhannn/order-service/internal/api/handlers/order"
+	"github.com/aliskhannn/order-service/internal/api/router"
+	"github.com/aliskhannn/order-service/internal/api/server"
 	"github.com/aliskhannn/order-service/internal/config"
 	gocache "github.com/aliskhannn/order-service/internal/infra/cache"
 	"github.com/aliskhannn/order-service/internal/logger"
@@ -48,11 +47,11 @@ func main() {
 	orderGetHandler := order.NewGetHandler(log, orderService)
 
 	r := router.New(orderGetHandler)
-	server := server2.New(cfg.Server.HTTPPort, r)
+	s := server.New(cfg.Server.HTTPPort, r)
 
 	go func() {
 		log.Info("starting HTTP server", zap.String("port", cfg.Server.HTTPPort))
-		if err = server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err = s.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatal("server failed", zap.Error(err))
 		}
 	}()
@@ -64,7 +63,7 @@ func main() {
 	defer cancel()
 
 	log.Info("shutting down HTTP server...")
-	if err = server.Shutdown(shutdownCtx); err != nil {
+	if err = s.Shutdown(shutdownCtx); err != nil {
 		log.Error("could not shutdown HTTP server", zap.Error(err))
 	}
 

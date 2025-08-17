@@ -40,9 +40,7 @@ func (r *Repository) SaveOrder(ctx context.Context, order *model.Order) (uuid.UU
 	}
 	// Ensure the transaction will be rolled back if not committed
 	defer func() {
-		if rerr := tx.Rollback(ctx); rerr != nil && !errors.Is(rerr, pgx.ErrTxClosed) {
-			r.logger.Error("failed to rollback transaction", zap.Error(rerr))
-		}
+		_ = tx.Rollback(ctx)
 	}()
 
 	// Insert into orders

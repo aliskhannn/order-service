@@ -9,69 +9,27 @@ The backend uses Kafka for messaging and `go-cache` package for caching.
 
 ```
 .
-├── backend
-│   ├── cmd
-│   │   ├── kafka
-│   │   │   └── main.go           # Kafka consumer service entry point
-│   │   └── server
-│   │       └── main.go           # HTTP server entry point
-│   ├── config
-│   │   └── config.yml            # Configuration file
-│   ├── internal
-│   │   ├── api
-│   │   │   ├── handlers
-│   │   │   │   └── order
-│   │   │   │       ├── get_handler.go        # Handler to get order by ID
-│   │   │   │       └── get_handler_test.go  # Unit tests for handler
-│   │   │   │   └── response.go               # Helper functions to write JSON/error responses
-│   │   │   ├── router
-│   │   │   │   └── router.go      # HTTP router setup
-│   │   │   └── server
-│   │   │       └── server.go      # HTTP server initialization
-│   │   ├── config
-│   │   │   └── config.go          # Configuration parsing logic
-│   │   ├── infra
-│   │   │   ├── cache
-│   │   │   │   ├── cache.go       # Caching logic
-│   │   │   │   └── errors.go      # Custom cache errors
-│   │   │   └── kafka
-│   │   │       ├── consumer.go    # Kafka consumer client
-│   │   │       └── kafka.go       # Kafka producer/consumer setup
-│   │   ├── kafka
-│   │   │   └── handlers/order
-│   │   │       ├── order_created_handler.go       # Handle "order created" messages
-│   │   │       └── errors.go                      # Custom errors for Kafka handlers
-│   │   ├── logger
-│   │   │   └── logger.go          # Zap logger setup
-│   │   ├── model
-│   │   │   ├── delivery.go
-│   │   │   ├── item.go
-│   │   │   ├── order.go
-│   │   │   └── payment.go
-│   │   ├── repository
-│   │   │   └── order
-│   │   │       ├── order_repo.go
-│   │   │       └── errors.go
-│   │   ├── service
-│   │   │   └── order
-│   │   │       ├── order_service.go
-│   │   │       └── order_service_test.go
-│   │   └── validator
-│   │       └── validator.go       # Input validation logic
-│   ├── migrations                 # Database migrations
-│   ├── Dockerfile                 # Backend Dockerfile
+├── backend/           # Backend service
+│   ├── cmd/           # Entry points (Kafka consumer, HTTP server)
+│   ├── config/        # Configuration files
+│   ├── internal/      # Application internal packages
+│   │   ├── api/       # HTTP handlers, routers, server
+│   │   ├── config/    # Config parsing logic
+│   │   ├── infra/     # Infrastructure (cache, kafka)
+│   │   ├── kafka/     # Kafka message handlers
+│   │   ├── logger/    # Logger setup
+│   │   ├── model/     # Data models
+│   │   ├── repository/ # Database repositories
+│   │   ├── service/   # Business logic
+│   │   └── validator/ # Input validation
+│   ├── migrations/    # DB migrations
+│   ├── Dockerfile
 │   ├── go.mod
 │   └── go.sum
-├── frontend
-│   ├── src
-│   │   ├── app/
-│   │   ├── entities/
-│   │   ├── features/
-│   │   └── pages/
-│   └── Dockerfile
-├── .env.example                   # Example environment variables
-├── docker-compose.yml             # Docker Compose configuration
-├── Makefile                       # Helper commands
+├── frontend/          # Frontend application
+├── .env.example
+├── docker-compose.yml
+├── Makefile
 └── README.md
 ```
 
