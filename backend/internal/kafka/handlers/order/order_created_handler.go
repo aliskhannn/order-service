@@ -21,12 +21,16 @@ type validator interface {
 	Validate(i interface{}) error
 }
 
+// CreateHandler handles Kafka messages related to order creation.
+// It validates incoming messages, invokes business logic,
+// and logs results or errors.
 type CreateHandler struct {
 	logger       *zap.Logger
 	validator    validator
 	orderService orderService
 }
 
+// NewCreateHandler constructs a new CreateHandler with the given dependencies.
 func NewCreateHandler(l *zap.Logger, v validator, s orderService) *CreateHandler {
 	return &CreateHandler{
 		logger:       l,
@@ -35,6 +39,14 @@ func NewCreateHandler(l *zap.Logger, v validator, s orderService) *CreateHandler
 	}
 }
 
+// HandleMessage processes an incoming Kafka message containing an order.
+// It performs the following steps:
+//  1. Unmarshals JSON payload into a model.Order.
+//  2. Validates the order.
+//  3. Persists the order using the service layer.
+//  4. Logs success or returns a contextualized error.
+//
+// Returns an error if any step fails.
 func (h *CreateHandler) HandleMessage(ctx context.Context, msg []byte) error {
 	var order *model.Order
 	if err := json.Unmarshal(msg, &order); err != nil {

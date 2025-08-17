@@ -1,5 +1,6 @@
 package model
 
+// Item represents a single item in an order.
 type Item struct {
 	ChrtID      int    `json:"chrt_id" validate:"required"`
 	TrackNumber string `json:"track_number" validate:"required"`

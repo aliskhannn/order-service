@@ -6,6 +6,8 @@ import (
 	"github.com/google/uuid"
 )
 
+// Order represents a customer order with delivery, payment, and item details.
+// It is the main entity in the system and is validated before persistence.
 type Order struct {
 	OrderID           uuid.UUID `json:"order_uid"`
 	TrackNumber       string    `json:"track_number" validate:"required"`

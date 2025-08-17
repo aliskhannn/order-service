@@ -7,6 +7,10 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+// CreateLogger initializes a zap.Logger based on the provided environment.
+// It configures the logger for production or development environments,
+// setting appropriate encoding, output paths, and encoder configurations.
+// The logger includes a timestamp and process ID in its initial fields.
 func CreateLogger(env string) *zap.Logger {
 	var config zap.Config
 	var encoderCfg zapcore.EncoderConfig

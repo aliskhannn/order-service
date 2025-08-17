@@ -18,12 +18,17 @@ type messageHandler interface {
 	HandleMessage(ctx context.Context, msg []byte) error
 }
 
+// Consumer wraps a Kafka reader and delegates consumed messages
+// to a messageHandler. It also handles logging and graceful shutdown.
 type Consumer struct {
 	reader  *kafka.Reader
 	logger  *zap.Logger
 	handler messageHandler
 }
 
+// NewConsumer creates a new Kafka consumer bound to a topic, consumer group,
+// and a set of broker addresses. A logger is used for structured logs, and
+// a messageHandler must be provided for message processing.
 func NewConsumer(groupID string, topic string, brokers []string, l *zap.Logger, h messageHandler) *Consumer {
 	return &Consumer{
 		reader:  NewReader(groupID, topic, brokers),
@@ -32,6 +37,12 @@ func NewConsumer(groupID string, topic string, brokers []string, l *zap.Logger, 
 	}
 }
 
+// ConsumeMessage starts consuming messages from Kafka and passes them to
+// the configured messageHandler. It runs until the provided context is canceled.
+// The WaitGroup is decremented when consumption stops, allowing coordinated shutdown.
+//
+// This method ensures graceful shutdown by closing the reader when the context is canceled
+// or when errors occur.
 func (c *Consumer) ConsumeMessage(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 	defer func() {
@@ -43,6 +54,7 @@ func (c *Consumer) ConsumeMessage(ctx context.Context, wg *sync.WaitGroup) {
 		c.logger.Info("Consumer closed successfully")
 	}()
 
+	// Listen for context cancellation to gracefully shut down the consumer.
 	go func() {
 		<-ctx.Done()
 		c.logger.Info("Received shutdown signal, closing consumer")
@@ -86,6 +98,9 @@ func (c *Consumer) ConsumeMessage(ctx context.Context, wg *sync.WaitGroup) {
 	c.logger.Info("ConsumeMessage finished")
 }
 
+// handleMessageError logs message handling errors with appropriate severity
+// based on the error type. Warnings are used for expected validation issues,
+// while unexpected errors are logged as errors.
 func (c *Consumer) handleMessageError(m kafka.Message, err error) {
 	msgStr := string(m.Value)
 
@@ -126,6 +141,7 @@ func (c *Consumer) handleMessageError(m kafka.Message, err error) {
 	}
 }
 
+// Close shuts down the Kafka reader and releases resources.
 func (c *Consumer) Close() error {
 	return c.reader.Close()
 }

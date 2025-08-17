@@ -1,5 +1,6 @@
 package model
 
+// Delivery represents the delivery information for an order.
 type Delivery struct {
 	Name    string `json:"name" validate:"required"`
 	Phone   string `json:"phone" validate:"required"`

@@ -15,11 +15,14 @@ import (
 	"github.com/aliskhannn/order-service/internal/model"
 )
 
+// Repository provides access to order-related data stored in PostgreSQL.
+// It encapsulates CRUD operations for orders, deliveries, payments, and items.
 type Repository struct {
 	db     *pgxpool.Pool
 	logger *zap.Logger
 }
 
+// New creates a new Repository instance with a given pgx connection pool and logger.
 func New(db *pgxpool.Pool, lg *zap.Logger) *Repository {
 	return &Repository{
 		db:     db,
@@ -27,6 +30,9 @@ func New(db *pgxpool.Pool, lg *zap.Logger) *Repository {
 	}
 }
 
+// SaveOrder inserts a new order and all its related entities (delivery, payment, items)
+// into the database in a single transaction. If any step fails, the transaction is rolled back.
+// Returns the generated order UUID or an error.
 func (r *Repository) SaveOrder(ctx context.Context, order *model.Order) (uuid.UUID, error) {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
@@ -108,6 +114,8 @@ func (r *Repository) SaveOrder(ctx context.Context, order *model.Order) (uuid.UU
 	return order.OrderID, nil
 }
 
+// GetOrderById retrieves a single order by its UUID, including delivery and payment details.
+// Note: Items are not currently loaded here — use GetItemsByOrderID if needed.
 func (r *Repository) GetOrderById(ctx context.Context, orderID uuid.UUID) (*model.Order, error) {
 	query := `
 	SELECT
@@ -156,6 +164,8 @@ func (r *Repository) GetOrderById(ctx context.Context, orderID uuid.UUID) (*mode
 	return &o, err
 }
 
+// GetLastOrders fetches the most recent orders from the database, limited by the given number.
+// Each order includes its delivery, payment, and items.
 func (r *Repository) GetLastOrders(ctx context.Context, limit int) ([]model.Order, error) {
 	query := `
 	SELECT
@@ -222,6 +232,8 @@ func (r *Repository) GetLastOrders(ctx context.Context, limit int) ([]model.Orde
 	return orders, nil
 }
 
+// GetItemsByOrderID retrieves all items associated with the given order UUID.
+// Returns an empty slice if no items are found.
 func (r *Repository) GetItemsByOrderID(ctx context.Context, orderID uuid.UUID) ([]model.Item, error) {
 	query := `
 	SELECT chrt_id, track_number, price, rid, name, sale, size, total_price, nm_id, brand, status

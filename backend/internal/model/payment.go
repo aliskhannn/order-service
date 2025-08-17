@@ -1,5 +1,6 @@
 package model
 
+// Payment represents the payment details for an order.
 type Payment struct {
 	Transaction  string `json:"transaction" validate:"required"`
 	RequestID    string `json:"request_id"`

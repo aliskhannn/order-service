@@ -11,6 +11,9 @@ import (
 	"github.com/aliskhannn/order-service/internal/api/handlers/order"
 )
 
+// New creates and configures a new HTTP router using chi.
+// It sets up common middlewares (request ID, logging, recovery, timeout, CORS)
+// and registers application routes.
 func New(orderGetHandler *order.GetHandler) http.Handler {
 	r := chi.NewRouter()
 
