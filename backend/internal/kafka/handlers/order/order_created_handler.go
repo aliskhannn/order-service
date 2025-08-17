@@ -12,7 +12,7 @@ import (
 	"github.com/aliskhannn/order-service/internal/model"
 )
 
-//go:generate mockgen -source=order_created_handler.go -destination=../../../mocks/kafka/handlers/mock_order_created_handler.go -package=handlers orderService,validator
+//go:generate mockgen -source=order_created_handler.go -destination=../../../mocks/kafka/handlers/order/mock_order_created_handler.go -package=handlers orderService,validator
 type orderService interface {
 	CreateOrder(ctx context.Context, order *model.Order) (uuid.UUID, error)
 }

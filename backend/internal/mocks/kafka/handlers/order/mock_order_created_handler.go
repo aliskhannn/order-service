@@ -8,10 +8,9 @@ import (
 	context "context"
 	reflect "reflect"
 
+	model "github.com/aliskhannn/order-service/internal/model"
 	gomock "github.com/golang/mock/gomock"
 	uuid "github.com/google/uuid"
-
-	model "github.com/aliskhannn/order-service/internal/model"
 )
 
 // MockorderService is a mock of orderService interface.

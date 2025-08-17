@@ -9,7 +9,7 @@ import (
 	"github.com/aliskhannn/order-service/internal/model"
 )
 
-//go:generate mockgen -source=order_service.go -destination=../../mocks/service/mock_order.go -package=mocks
+//go:generate mockgen -source=order_service.go -destination=../../mocks/service/order/mock_order.go -package=mocks
 type orderRepository interface {
 	SaveOrder(ctx context.Context, order *model.Order) (uuid.UUID, error)
 	GetOrderById(ctx context.Context, orderID uuid.UUID) (*model.Order, error)

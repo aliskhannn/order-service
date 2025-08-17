@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 
-	mocks "github.com/aliskhannn/order-service/internal/mocks/service"
+	mocks "github.com/aliskhannn/order-service/internal/mocks/service/order"
 	"github.com/aliskhannn/order-service/internal/model"
 )
 

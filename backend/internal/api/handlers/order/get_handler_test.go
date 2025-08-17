@@ -17,7 +17,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 
-	mocks "github.com/aliskhannn/order-service/internal/mocks/api/order"
+	mocks "github.com/aliskhannn/order-service/internal/mocks/api/handlers/order"
 	"github.com/aliskhannn/order-service/internal/model"
 )
 

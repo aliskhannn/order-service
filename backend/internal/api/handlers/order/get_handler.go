@@ -16,7 +16,7 @@ import (
 	"github.com/aliskhannn/order-service/internal/model"
 )
 
-//go:generate mockgen -source=get_handler.go -destination=../../mocks/api/order/mock_order_service.go -package=mocks
+//go:generate mockgen -source=get_handler.go -destination=../../../mocks/api/handlers/order/mock_order_service.go -package=mocks
 type orderService interface {
 	GetOrderByID(ctx context.Context, orderID uuid.UUID) (*model.Order, error)
 }
