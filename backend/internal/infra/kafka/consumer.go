@@ -42,7 +42,11 @@ func NewConsumer(groupID string, topic string, brokers []string, l *zap.Logger, 
 func (c *Consumer) ConsumeMessage(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 	defer func() {
-		_ = c.Close()
+		if err := c.Close(); err != nil {
+			c.logger.Error("error closing consumer", zap.Error(err))
+			return
+		}
+
 		c.logger.Info("Consumer closed successfully")
 	}()
 
@@ -59,11 +63,6 @@ func (c *Consumer) ConsumeMessage(ctx context.Context, wg *sync.WaitGroup) {
 		default:
 			msg, err := c.reader.ReadMessage(ctx)
 			if err != nil {
-				if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-					c.logger.Warn("context canceled or deadline exceeded, stopping consumer", zap.Error(err))
-					break
-				}
-
 				c.logger.Error("error reading message", zap.Error(err))
 				continue
 			}
