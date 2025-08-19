@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/segmentio/kafka-go"
 
 	"github.com/google/uuid"
 
@@ -39,7 +40,7 @@ func NewCreateHandler(l *zap.Logger, v validator, s orderService) *CreateHandler
 	}
 }
 
-// HandleMessage processes an incoming Kafka message containing an order.
+// ProcessMessage processes an incoming Kafka message containing an order.
 // It performs the following steps:
 //  1. Unmarshals JSON payload into a model.Order.
 //  2. Validates the order.
@@ -47,23 +48,23 @@ func NewCreateHandler(l *zap.Logger, v validator, s orderService) *CreateHandler
 //  4. Logs success or returns a contextualized error.
 //
 // Returns an error if any step fails.
-func (h *CreateHandler) HandleMessage(ctx context.Context, msg []byte) error {
+func (h *CreateHandler) ProcessMessage(ctx context.Context, msg kafka.Message) error {
 	var order *model.Order
-	if err := json.Unmarshal(msg, &order); err != nil {
-		return fmt.Errorf("%w: %v", ErrInvalidJSON, err)
+	if err := json.Unmarshal(msg.Value, &order); err != nil {
+		return fmt.Errorf("unmarshal order: %v", err)
 	}
 
 	if order == nil {
-		return fmt.Errorf("%w", ErrNilOrder)
+		return ErrNilOrder
 	}
 
 	if err := h.validator.Validate(order); err != nil {
-		return fmt.Errorf("%w: %v", ErrValidation, err)
+		return fmt.Errorf("validate order: %v", err)
 	}
 
 	orderID, err := h.orderService.CreateOrder(ctx, order)
 	if err != nil {
-		return fmt.Errorf("%w: %v", ErrCreateOrder, err)
+		return fmt.Errorf("create order: %v", err)
 	}
 
 	h.logger.Info("Order processed successfully", zap.String("orderID", orderID.String()))

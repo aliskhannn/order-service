@@ -3,11 +3,8 @@ package kafka
 import (
 	"context"
 	"errors"
-	"sync"
-
-	"go.uber.org/zap/zapcore"
-
 	"github.com/aliskhannn/order-service/internal/kafka/handlers/order"
+	"sync"
 
 	"go.uber.org/zap"
 
@@ -15,7 +12,7 @@ import (
 )
 
 type messageHandler interface {
-	HandleMessage(ctx context.Context, msg []byte) error
+	ProcessMessage(ctx context.Context, msg kafka.Message) error
 }
 
 // Consumer wraps a Kafka reader and delegates consumed messages
@@ -60,7 +57,7 @@ func (c *Consumer) ConsumeMessage(ctx context.Context, wg *sync.WaitGroup) {
 			c.logger.Info("shutdown signal received, stopping consumer")
 			return
 		default:
-			m, err := c.reader.ReadMessage(ctx)
+			msg, err := c.reader.ReadMessage(ctx)
 			if err != nil {
 				if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 					c.logger.Warn("context canceled or deadline exceeded, stopping consumer", zap.Error(err))
@@ -71,59 +68,29 @@ func (c *Consumer) ConsumeMessage(ctx context.Context, wg *sync.WaitGroup) {
 				continue
 			}
 
-			if err = c.handler.HandleMessage(ctx, m.Value); err != nil {
-				c.handleMessageError(m, err)
+			err = c.handler.ProcessMessage(ctx, msg)
+			if err != nil {
+				if errors.Is(err, order.ErrNilOrder) {
+					c.logger.Error("nil order received",
+						zap.Int64("offset", msg.Offset),
+						zap.String("message", string(msg.Value)),
+					)
+					continue
+				}
+
+				c.logger.Error("error processing message",
+					zap.Int64("offset", msg.Offset),
+					zap.String("message", string(msg.Value)),
+					zap.Error(err),
+				)
 				continue
 			}
 
 			c.logger.Info("message handled successfully",
-				zap.Int64("offset", m.Offset),
-				zap.String("message", string(m.Value)),
+				zap.Int64("offset", msg.Offset),
+				zap.String("message", string(msg.Value)),
 			)
 		}
-	}
-}
-
-// handleMessageError logs message handling errors with appropriate severity
-// based on the error type. Warnings are used for expected validation issues,
-// while unexpected errors are logged as errors.
-func (c *Consumer) handleMessageError(m kafka.Message, err error) {
-	msgStr := string(m.Value)
-
-	var lvl zapcore.Level
-	var msg string
-
-	switch {
-	case errors.Is(err, order.ErrInvalidJSON):
-		lvl = zap.WarnLevel
-		msg = "invalid JSON format"
-	case errors.Is(err, order.ErrNilOrder):
-		lvl = zap.WarnLevel
-		msg = "nil order received"
-	case errors.Is(err, order.ErrValidation):
-		lvl = zap.WarnLevel
-		msg = "validation error"
-	case errors.Is(err, order.ErrCreateOrder):
-		lvl = zap.WarnLevel
-		msg = "failed to create order"
-	default:
-		lvl = zap.ErrorLevel
-		msg = "unexpected error while handling message"
-	}
-
-	switch lvl {
-	case zap.WarnLevel:
-		c.logger.Warn(msg,
-			zap.Int64("offset", m.Offset),
-			zap.String("message", msgStr),
-			zap.Error(err),
-		)
-	case zap.ErrorLevel:
-		c.logger.Error(msg,
-			zap.Int64("offset", m.Offset),
-			zap.String("message", msgStr),
-			zap.Error(err),
-		)
 	}
 }
 
