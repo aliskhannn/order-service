@@ -9,26 +9,25 @@ The backend uses Kafka for messaging and `go-cache` package for caching.
 
 ```
 .
-├── backend/           # Backend service
-│   ├── cmd/           # Entry points (Kafka consumer, HTTP server)
-│   ├── config/        # Configuration files
-│   ├── internal/      # Application internal packages
-│   │   ├── api/       # HTTP handlers, routers, server
-│   │   ├── config/    # Config parsing logic
-│   │   ├── infra/     # Infrastructure (cache, kafka)
-│   │   ├── kafka/     # Kafka message handlers
-│   │   ├── logger/    # Logger setup
-│   │   ├── model/     # Data models
-│   │   ├── repository/ # Database repositories
-│   │   ├── service/   # Business logic
-│   │   └── validator/ # Input validation
-│   ├── migrations/    # DB migrations
-│   ├── Dockerfile
-│   ├── go.mod
-│   └── go.sum
-├── frontend/          # Frontend application
+├── cmd/              # Entry points (Kafka consumer, HTTP server)
+├── config/           # Configuration files
+├── internal/         # Application internal packages
+│   ├── api/          # HTTP handlers, routers, server
+│   ├── config/       # Config parsing logic
+│   ├── infra/        # Infrastructure (cache, kafka)
+│   ├── kafka/        # Kafka message handlers
+│   ├── logger/       # Logger setup
+│   ├── model/        # Data models
+│   ├── repository/   # Database repositories
+│   ├── service/      # Business logic
+│   └── validator/    # Input validation
+├── migrations/       # DB migrations
+├── website/          # Frontend application
 ├── .env.example
+├── Dockerfile
 ├── docker-compose.yml
+├── go.mod
+├── go.sum
 ├── Makefile
 └── README.md
 ```
